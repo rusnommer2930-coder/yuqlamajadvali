@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Universitet Elektron Davomat va Dekanat Tizimi</title>
+  
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background-color: #f8fafc; color: #0f172a; font-size: 12px; }
+    
+    .header { background: #0f2e5a; color: white; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.15); flex-wrap: wrap; gap: 8px; }
+    .nav-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .nav-btn { background: #1e4b87; color: white; border: none; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+    .nav-btn.active { background: #2563eb; }
+    
+    .btn { padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-excel { background: #059669; color: white; }
+    .btn-telegram { background: #0284c7; color: white; }
+    .btn-warning { background: #d97706; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-sms { background: #2563eb; color: white; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+    
+    .card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; padding: 12px 14px; margin: 8px auto; max-width: 99%; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+    
+    .filter-section { margin-bottom: 10px; }
+    .filter-title { font-weight: bold; font-size: 12px; color: #1e293b; margin-bottom: 6px; }
+    .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    
+    .pill { padding: 5px 11px; border-radius: 16px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 11px; font-weight: 500; color: #334155; }
+    .pill.active { background: #2563eb; color: #fff; border-color: #2563eb; font-weight: bold; }
+    
+    .group-pill { padding: 5px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-size: 11px; font-weight: 600; color: #1e293b; }
+    .group-pill.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    
+    .stat-bar { display: flex; align-items: center; gap: 12px; font-size: 12px; background: #ffffff; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin: 8px auto; max-width: 99%; font-weight: 500; flex-wrap: wrap; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 11px; background: white; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center; vertical-align: middle; }
+    th { background: #0f2e5a; color: white; font-weight: 600; font-size: 11px; }
+    .sub-th { background: #1e4b87; color: white; font-size: 10px; padding: 3px 0; }
+    tbody tr:nth-child(even) { background-color: #f8fafc; }
+    tbody tr:hover { background-color: #f1f5f9; }
+    
+    .cell-btn { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; cursor: pointer; font-weight: bold; font-size: 11px; margin: 0 auto; display: inline-flex; align-items: center; justify-content: center; }
+    .cell-btn.absent { background: #fee2e2; color: #dc2626; border-color: #f87171; }
+    .cell-btn.late { background: #fef08a; color: #854d0e; border-color: #facc15; }
+    .cell-btn.locked { cursor: not-allowed; opacity: 0.85; }
+    
+    .student-cell { text-align: left; padding-left: 8px; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+    .debt-badge-danger { display: inline-block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
+    .debt-badge-ok { display: inline-block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
+    
+    .table-select { padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; height: 32px; background: white; }
+
+    .badge { padding: 2px 6px; border-radius: 4px; font-weight: 600; font-size: 10px; }
+    .badge-danger { background: #fee2e2; color: #b91c1c; }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+    .badge-spravka { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-score-5 { background: #dcfce7; color: #15803d; font-weight: bold; }
+    .badge-score-4 { background: #dbeafe; color: #1e40af; font-weight: bold; }
+    .badge-score-3 { background: #fef3c7; color: #b45309; font-weight: bold; }
+    .badge-score-2 { background: #fee2e2; color: #b91c1c; font-weight: bold; }
+
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 12px; }
+    .login-box { background: white; padding: 22px 18px; border-radius: 8px; width: 100%; max-width: 360px; text-align: center; }
+    .schedule-box { background: white; padding: 18px 14px; border-radius: 8px; width: 850px; max-width: 98%; max-height: 90vh; overflow-y: auto; }
+    .input { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px; }
+    .auth-tab { flex: 1; padding: 10px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: bold; font-size: 12px; color: #64748b; }
+    .auth-tab.active { border-color: #2563eb; color: #2563eb; }
+
+    .schedule-table th { background: #005953; color: white; padding: 8px; }
+    .schedule-table td { padding: 8px 6px; }
+    .schedule-room { color: #008779; font-weight: bold; font-size: 12px; }
+    .tag-today { background: #059669; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: 6px; font-weight: bold; }
+
+    .alert-banner { padding: 10px 14px; border-radius: 6px; margin-bottom: 10px; font-weight: 600; font-size: 12px; }
+    .alert-warning { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
+    .alert-hayfsan { background: #fff1f2; border: 1px solid #fecdd3; color: #e11d48; }
+    .alert-critical { background: #450a0a; border: 1px solid #991b1b; color: #ffffff; }
+
+    .anonymous-box { background: linear-gradient(135deg, #1e3a8a, #0f2e5a); color: white; padding: 14px 16px; border-radius: 8px; margin-bottom: 12px; }
+    .anonymous-title { font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .anonymous-text { font-size: 11px; line-height: 1.5; opacity: 0.95; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .group-stat-card { background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between; }
+    .group-stat-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; margin-bottom: 6px; }
+    .progress-bar-bg { width: 100%; height: 8px; background: #fee2e2; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+    .progress-bar-fill { height: 100%; background: #16a34a; border-radius: 4px; }
+
+    /* KURSLAR KESIMIDA MAXSUS STATISTIKA KARTALARI */
+    .course-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .course-stat-card { background: #ffffff; border: 1px solid #bfdbfe; border-top: 4px solid #2563eb; border-radius: 8px; padding: 10px 14px; box-shadow: 0 2px 4px rgba(37,99,235,0.06); }
+    .course-stat-card.total-card { border-top-color: #059669; border-color: #bbf7d0; background: #f0fdf4; }
+  </style>
+</head>
+<body>
+
+  <!-- 1. LOGIN MODALI -->
+  <div id="login-modal" class="modal" style="display:flex;">
+    <div class="login-box">
+      <h3 style="margin-top:0; font-size:16px; color:#0f2e5a;">Oriental Dekanat Tizimi</h3>
+      <div style="display:flex; border-bottom: 1px solid #e2e8f0; margin-bottom: 12px;">
+        <div id="auth-tab-staff" class="auth-tab active" onclick="switchAuthTab('staff')">O'qituvchi / Dekanat</div>
+        <div id="auth-tab-student" class="auth-tab" onclick="switchAuthTab('student')">Talaba (HEMIS ID)</div>
+      </div>
+
+      <div id="form-staff">
+        <input type="text" id="l-user" class="input" placeholder="Login" autocomplete="off" autocorrect="off" autocapitalize="none">
+        <input type="password" id="l-pass" class="input" placeholder="Parol" autocomplete="off">
+        <div id="l-err" style="color:red; font-size:11px; margin: 6px 0; display:none; font-weight:600;"></div>
+        <button type="button" id="l-btn" class="btn btn-primary" style="width:100%; padding:10px; margin-top:4px;" onclick="doStaffLogin()">Tizimga kirish</button>
+      </div>
+
+      <div id="form-student" style="display:none;">
+        <p style="font-size:11px; color:#64748b; margin-top:0;">12 xonali HEMIS ID raqamingizni kiriting:</p>
+        <input type="tel" id="s-hemis" class="input" placeholder="HEMIS ID..." autocomplete="off" maxlength="16">
+        <div id="s-err" style="color:red; font-size:11px; margin: 6px 0; display:none; font-weight:600;"></div>
+        <button type="button" id="s-btn" class="btn btn-primary" style="width:100%; padding:10px; margin-top:4px;" onclick="doStudentLogin()">Kabinetga kirish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. DARS JADVALI MODALI -->
+  <div id="schedule-modal" class="modal" style="display:none;">
+    <div class="schedule-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 id="schedule-modal-title" style="margin:0; font-size:15px; color:#0f2e5a;">Guruh dars jadvali</h3>
+        <button class="btn btn-danger" onclick="closeScheduleModal()">✕ Yopish</button>
+      </div>
+      <table class="schedule-table">
+        <thead>
+          <tr>
+            <th style="width:160px;">Hafta kuni</th>
+            <th style="width:60px;">Para</th>
+            <th style="width:90px;">Vaqti</th>
+            <th style="text-align:left; padding-left:8px;">Fan nomi va O'qituvchi</th>
+            <th style="width:80px;">Xona</th>
+          </tr>
+        </thead>
+        <tbody id="schedule-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. DEKANAT VA ADMIN ASOSIY EKRANI -->
+  <div id="app" style="display:none;">
+    <div class="header">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <b style="font-size: 14px;">Elektron Dekanat Tizimi</b>
+        <div class="nav-tabs">
+          <button id="tab-groups-btn" class="nav-btn active" onclick="switchView('groups')">📑 Yo'qlama</button>
+          <button id="tab-grades-btn" class="nav-btn" onclick="switchView('grades')">📝 Baholash</button>
+          <button id="tab-monitoring-btn" class="nav-btn" onclick="switchView('monitoring')">📊 Monitoring</button>
+          <button id="tab-teacher-feedback-btn" class="nav-btn" style="display:none; background:#d97706;" onclick="switchView('teacher-feedback')">💬 Izohlar</button>
+        </div>
+      </div>
+      <div>
+        <span id="user-info" style="font-size:11px; margin-right:8px;"></span>
+        <button class="btn btn-danger" onclick="logout()">Chiqish</button>
+      </div>
+    </div>
+
+    <!-- 1-BO'LIM: GURUHLAR YO'QLAMASI -->
+    <div id="view-groups">
+      <div class="card">
+        <div class="filter-section">
+          <div class="filter-title">1. Fakultet:</div>
+          <div id="faculties-filter" class="chips-row"></div>
+        </div>
+        <div class="filter-section">
+          <div class="filter-title">2. Kurs va shakl:</div>
+          <div id="courses-filter" class="chips-row"></div>
+        </div>
+        <div class="filter-section" style="margin-bottom:0;">
+          <div class="filter-title">3. Guruh:</div>
+          <div id="groups-box" class="chips-row" style="max-height:120px; overflow-y:auto;">Guruhlar yuklanmoqda...</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center;">
+          <button class="btn btn-primary" onclick="shiftWeek(-1)">◀ Oldingi</button>
+          <button class="btn btn-primary" style="margin-left:5px;" onclick="shiftWeek(1)">Keyingi ▶</button>
+          <span id="week-label" style="font-weight:bold; margin-left:10px; font-size:12px; color:#0f2e5a;"></span>
+        </div>
+        
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-warning" onclick="openScheduleModal()">📅 Dars jadvali</button>
+          <button class="btn btn-excel" onclick="exportFullGroupWeeklyReport()">📥 Excel</button>
+          <button id="save-btn" class="btn btn-primary" onclick="saveAttendanceData()" disabled>Bazaga Saqlash</button>
+        </div>
+      </div>
+
+      <div id="group-stats-bar" class="stat-bar" style="display:none;"></div>
+
+      <div class="card" style="overflow-x:auto; padding: 4px;">
+        <table>
+          <thead>
+            <tr id="days-row"></tr>
+            <tr id="paras-row"></tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="25" style="padding:15px; color:#64748b;">Guruhni tanlang</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2-BO'LIM: BAHOLASH -->
+    <div id="view-grades" style="display:none;">
+      <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div>Guruh: <b id="grades-group-label" style="color:#2563eb;">—</b></div>
+          <input type="text" id="grade-subject-input" class="input" style="width:200px; margin:0;" placeholder="Fan nomini kiriting...">
+        </div>
+        <button class="btn btn-success" onclick="saveGradesData()">💾 Baholarni saqlash</button>
+      </div>
+
+      <div class="card" style="overflow-x:auto; padding: 4px;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px;">T/r</th>
+              <th style="width:110px;">HEMIS ID</th>
+              <th style="text-align:left; min-width:200px;">Talaba F.I.Sh.</th>
+              <th style="width:120px;">Baho</th>
+            </tr>
+          </thead>
+          <tbody id="grades-tbody">
+            <tr><td colspan="4" style="padding:15px; color:#64748b;">Guruhni tanlang</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3-BO'LIM: MONITORING (KURSLAR KESIMIDA UMUMIY DAVOMAT KARTALARI QO'SHILDI) -->
+    <div id="view-monitoring" style="display:none;">
+      <div class="card" style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span style="font-weight:bold;">Turi:</span>
+            <button class="pill active" id="m-btn-today" onclick="setMonitoringMode('today')">Kunlik</button>
+            <button class="pill" id="m-btn-week" onclick="setMonitoringMode('week')">Haftalik</button>
+            <button class="pill" id="m-btn-month" onclick="setMonitoringMode('month')">Oylik</button>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span>Sana:</span>
+            <input type="date" id="m-date-start" class="input" style="width:125px; margin:0; padding:6px;">
+            <span>Gacha:</span>
+            <input type="date" id="m-date-end" class="input" style="width:125px; margin:0; padding:6px;">
+            <button class="btn btn-primary" onclick="loadMonitoringData()">Yangilash</button>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span>Kelmagan: <b id="m-total-students" style="color:red; font-size:13px;">0 nafar</b></span>
+            <span>Qoldirilgan: <b id="m-total-hours" style="color:#d97706; font-size:13px;">0 soat</b></span>
+            <button class="btn btn-telegram" onclick="sendMonitoringToTelegram()">✈ Telegram</button>
+            <button class="btn btn-excel" onclick="exportMonitoringExcel()">📥 Excel</button>
+          </div>
+        </div>
+
+        <hr style="border:0; border-top:1px solid #e2e8f0; margin:4px 0;">
+
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <!-- Shakl -->
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span style="font-weight:bold; min-width:65px;">Shakl:</span>
+            <button class="pill active" id="shakl-all" onclick="setStudyTypeFilter('Barchasi')">Barchasi</button>
+            <button class="pill" id="shakl-kunduzgi" onclick="setStudyTypeFilter('kunduzgi')">Kunduzgi</button>
+            <button class="pill" id="shakl-kechki" onclick="setStudyTypeFilter('kechki')">Kechki</button>
+            <button class="pill" id="shakl-sirtqi" onclick="setStudyTypeFilter('sirtqi')">Sirtqi</button>
+          </div>
+
+          <!-- Fakultet -->
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span style="font-weight:bold; min-width:65px;">Fakultet:</span>
+            <div id="m-faculties-filter" class="chips-row" style="display:inline-flex;"></div>
+          </div>
+
+          <!-- Kurs -->
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span style="font-weight:bold; min-width:65px;">Kurs:</span>
+            <button class="pill active" id="kurs-all" onclick="setCourseFilter('Barchasi')">Barchasi</button>
+            <button class="pill" id="kurs-1" onclick="setCourseFilter('1')">1-kurs</button>
+            <button class="pill" id="kurs-2" onclick="setCourseFilter('2')">2-kurs</button>
+            <button class="pill" id="kurs-3" onclick="setCourseFilter('3')">3-kurs</button>
+            <button class="pill" id="kurs-4" onclick="setCourseFilter('4')">4-kurs</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- YANGI FUNKSIYA: KURSLAR KESIMIDA UMUMIY DAVOMAT HISOBOTI (BLOKLARI) -->
+      <div class="card" style="background:#f8fafc; border:1px solid #cbd5e1;">
+        <div style="font-weight:bold; font-size:13px; color:#0f2e5a; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span>🎯 Kurslar kesimida bugungi umumiy davomat ko'rsatkichi (Soni va foizi):</span>
+          <small style="color:#64748b; font-weight:normal;">(Har bir kursda jami nechta talabadan nechta kelgani)</small>
+        </div>
+        <div id="course-summary-container" class="course-summary-grid">Yuklanmoqda...</div>
+      </div>
+
+      <!-- Guruhlar kesimidagi svodka kartalari -->
+      <div class="card" id="group-summary-container" style="background:#f1f5f9; border:1px solid #cbd5e1;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <b style="font-size:12px; color:#0f2e5a;">
+            📊 Guruhlar bo'yicha kunlik kelish (<span id="summary-filter-label">Barchasi</span>):
+          </b>
+        </div>
+        <div id="summary-cards" class="summary-grid">Yuklanmoqda...</div>
+      </div>
+
+      <!-- Dars qoldirgan talabalar ro'yxati -->
+      <div class="card" style="overflow-x:auto; padding: 4px;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:35px;">T/r</th>
+              <th>Sana</th>
+              <th style="text-align:left; min-width:180px;">Talaba F.I.Sh.</th>
+              <th>Guruh</th>
+              <th>Kurs</th>
+              <th>Shakl</th>
+              <th>Fakultet</th>
+              <th>Para</th>
+              <th>Soat</th>
+              <th>Holat</th>
+              <th>Izoh</th>
+              <th>Belgilagan</th>
+            </tr>
+          </thead>
+          <tbody id="monitoring-tbody">
+            <tr><td colspan="12" style="padding:15px; color:#64748b;">Ma'lumotlar yangilanmoqda...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 4-BO'LIM: ADMIN IZOHLARI -->
+    <div id="view-teacher-feedback" style="display:none;">
+      <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <b style="font-size:13px; color:#0f2e5a;">💬 Talabalar tomonidan o'qituvchilarga berilgan izohlar</b>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-primary" onclick="loadTeacherFeedbackData()">🔄 Yangilash</button>
+          <button class="btn btn-excel" onclick="exportTeacherFeedbackExcel()">📥 Excel</button>
+        </div>
+      </div>
+
+      <div class="card" style="overflow-x:auto; padding: 4px;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:35px;">T/r</th>
+              <th style="width:110px;">Vaqti</th>
+              <th style="text-align:left; min-width:180px;">Ustoz</th>
+              <th style="width:70px;">Baho</th>
+              <th style="text-align:left; min-width:220px;">Izoh</th>
+              <th style="text-align:left; min-width:180px;">Talaba</th>
+              <th style="width:90px;">Guruh</th>
+            </tr>
+          </thead>
+          <tbody id="feedback-tbody">
+            <tr><td colspan="7" style="padding:15px;">Yuklanmoqda...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. TALABA SHAXSIY KABINETI -->
+  <div id="student-app" style="display:none; max-width:900px; margin: 0 auto; padding: 8px;">
+    <div class="header" style="border-radius:8px;">
+      <div><b style="font-size: 14px;">Talaba Shaxsiy Kabineti</b></div>
+      <button class="btn btn-danger" onclick="logout()">Chiqish</button>
+    </div>
+
+    <div class="card" style="border: 2px solid #2563eb; background: #ffffff; margin-top:10px;">
+      <div class="anonymous-box">
+        <div class="anonymous-title">🔒 100% Sir Saqlanuvchi Anonim Baholash</div>
+        <div class="anonymous-text">
+          Siz kiritgan baho va fikr <b>mutlaqo anonim</b> qoladi. Tizim sizning F.I.Sh. yoki HEMIS ID raqamingizni o'qituvchiga ko'rsatmaydi.
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div>
+          <label style="font-weight:bold; color:#0f2e5a; display:block; margin-bottom:4px;">1. Ustoz ism-familiyasi:</label>
+          <input type="text" id="teacher-search-input" list="teachers-datalist" class="input" style="margin:0; height:38px;" placeholder="Familiya yoki ismini yozing...">
+          <datalist id="teachers-datalist"></datalist>
+        </div>
+
+        <div>
+          <label style="font-weight:bold; color:#0f2e5a; display:block; margin-bottom:4px;">2. O'qituvchiga izoh va baho:</label>
+          <select id="teacher-rate-select" class="table-select" style="width:100%; height:38px;">
+            <option value="">— Baho va izohni tanlang —</option>
+            <option value="5|1. Ustozim juda yaxshi dars beradi">⭐ 5 ball — 1. Ustozim juda yaxshi dars beradi</option>
+            <option value="4|2. Ustoz o'rtacha dars beradi">⭐ 4 ball — 2. Ustoz o'rtacha dars beradi</option>
+            <option value="3|3. Ustoz yaxshi dars bermaydi">⭐ 3 ball — 3. Ustoz yaxshi dars bermaydi</option>
+            <option value="2|4. Ustoz darsda faqat o'tirib telfon bilan band">⭐ 2 ball — 4. Ustoz darsda faqat o'tirib telfon bilan band</option>
+          </select>
+        </div>
+
+        <button id="teacher-rate-btn" class="btn btn-primary" style="height:38px; width:100%; font-size:12px;" onclick="submitTeacherRatingSingle()">🔒 Fikrni yuborish</button>
+      </div>
+    </div>
+
+    <div id="st-alert-box" style="margin-top:10px;"></div>
+
+    <div id="st-debt-banner" class="card" style="display:none; background:#fef2f2; border:1px solid #f87171; padding:12px 14px;">
+      <b style="color:#991b1b; font-size:13px;">⚠️ Kontrakt bo'yicha qarzdorlik: </b>
+      <span id="st-debt-amount" style="font-weight:bold; color:#dc2626; font-size:14px;">0 so'm</span>
+    </div>
+
+    <div class="card">
+      <h2 id="st-fio" style="margin:0 0 4px 0; font-size:15px; color:#0f2e5a;">—</h2>
+      <div style="font-size:11px; color:#64748b;">
+        HEMIS ID: <b id="st-id" style="color:#0f172a;">—</b> | Guruh: <b id="st-group" style="color:#2563eb;">—</b> | 
+        Qoldirilgan darslar: <b id="st-total-hours" style="color:#dc2626;">0 soat</b>
+      </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto;">
+      <h3 style="margin-top:0; font-size:12px; color:#005953;">📅 Guruh dars jadvali</h3>
+      <table class="schedule-table">
+        <thead>
+          <tr>
+            <th style="width:140px;">Kuni</th>
+            <th style="width:50px;">Para</th>
+            <th style="width:85px;">Vaqti</th>
+            <th style="text-align:left; padding-left:8px;">Fan nomi</th>
+            <th style="width:70px;">Xona</th>
+          </tr>
+        </thead>
+        <tbody id="st-schedule-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="card" style="overflow-x:auto;">
+      <h3 style="margin-top:0; font-size:12px; color:#0f2e5a;">🔴 Qoldirilgan darslar tarixi:</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Sana</th>
+            <th>Para</th>
+            <th>Soat</th>
+            <th>Holat</th>
+            <th>Izoh</th>
+            <th>Xodim</th>
+          </tr>
+        </thead>
+        <tbody id="st-absences-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://tqvjevcskfzojtijqkua.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_-rQGO7ETZj1f3L6JWSzEOA_Hvp_ho_c";
+    let supabaseClient = null;
+
+    try {
+      if (window.supabase) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch(err) {
+      console.error("Supabase ulanish xatosi:", err);
+    }
+
+    const TG_BOT_TOKEN = "9219040993:AAFuhXZG5651-Mh7bnkXiZleX_sFCKi_tFQ";
+
+    let currentUser = null;
+    let currentStudent = null;
+    let allGroupsMeta = [];
+    let currentFaculty = "Barchasi";
+    let currentCourseForm = "Barchasi";
+    let currentGroup = "";
+
+    // MONITORING UCHUN FILTRLAR
+    let selectedStudyType = "Barchasi";
+    let selectedFacultyFilter = "Barchasi";
+    let selectedCourseFilter = "Barchasi";
+
+    let curMonday = getMonday(new Date());
+    let weekDates = [];
+    let studentsList = [];
+    let attendanceMap = {};
+    let pendingChanges = {};
+    let monitoringRows = [];
+    let feedbackRows = [];
+
+    // Kurs matnidan toza raqamni ajratish yordamchisi (1-kurs -> 1)
+    function cleanCourseNumber(c) {
+      if (!c) return "1";
+      var n = String(c).replace(/\D/g, '');
+      return n ? n : "1";
+    }
+
+    const masterSchedule = [
+      { date: "2026-11-02", day: "02.11 (Dush)", para: 1, time: "8:30–9:50", subject: "Iqtisodiyotda AKT (A) Mamonov A.M.", room: "325" },
+      { date: "2026-11-02", day: "02.11 (Dush)", para: 2, time: "10:00–11:20", subject: "Amaliy matematika 1,2 (A) Ibragimov A.M.", room: "322" },
+      { date: "2026-11-02", day: "02.11 (Dush)", para: 3, time: "11:30–12:50", subject: "Eng yangi tarix (S) Xudoyorov O`.", room: "315" },
+      { date: "2026-11-03", day: "03.11 (Sesh)", para: 1, time: "8:30–9:50", subject: "O`zbek tili rus tili (A) Kurbaniyazova D.", room: "318" },
+      { date: "2026-11-03", day: "03.11 (Sesh)", para: 2, time: "10:00–11:20", subject: "Iqtisodiyot nazariyasi (S) Ulmasova O.", room: "209" },
+      { date: "2026-11-03", day: "03.11 (Sesh)", para: 3, time: "11:30–12:50", subject: "Iqtisodiyot nazariyasi (M) Mardonov B.", room: "115" },
+      { date: "2026-11-04", day: "04.11 (Chor)", para: 1, time: "8:30–9:50", subject: "Amaliy matematika 1,2 (M) Ibragimov A.", room: "401" },
+      { date: "2026-11-04", day: "04.11 (Chor)", para: 2, time: "10:00–11:20", subject: "Xorijiy til 1 (ingliz) (A) Qurbonova N.", room: "329" },
+      { date: "2026-11-04", day: "04.11 (Chor)", para: 3, time: "11:30–12:50", subject: "Iqtisodiyotda AKT (M) Mamonov A.", room: "112" },
+      { date: "2026-11-05", day: "05.11 (Pay)", para: 1, time: "8:30–9:50", subject: "Eng yangi tarix (M) Xudoyorov O`.", room: "112" },
+      { date: "2026-11-05", day: "05.11 (Pay)", para: 2, time: "10:00–11:20", subject: "Amaliy matematika (M) Ibragimov A.", room: "218" },
+      { date: "2026-11-05", day: "05.11 (Pay)", para: 3, time: "11:30–12:50", subject: "Iqtisodiyotda AKT (M) Mamonov A.", room: "112" },
+      { date: "2026-11-06", day: "06.11 (Jum)", para: 1, time: "8:30–9:50", subject: "Xorijiy til 1 (ingliz) (A) Qurbonova N.", room: "202" },
+      { date: "2026-11-06", day: "06.11 (Jum)", para: 2, time: "10:00–11:20", subject: "O`zbek tili rus tili (A) Kurbaniyazova D.", room: "313" },
+      { date: "2026-11-06", day: "06.11 (Jum)", para: 3, time: "11:30–12:50", subject: "Xorijiy til 1 (ingliz) (A) Qurbonova N.", room: "118" }
+    ];
+
+    window.onload = function() {
+      initWeek();
+      initMonitoringDates();
+      checkAutoLogin();
+    };
+
+    function checkAutoLogin() {
+      var savedRole = localStorage.getItem("auth_role");
+      if (savedRole === "staff") {
+        var u = localStorage.getItem("auth_user");
+        var p = localStorage.getItem("auth_pass");
+        if (u && p) {
+          document.getElementById("l-user").value = u;
+          document.getElementById("l-pass").value = p;
+          doStaffLogin(true);
+        }
+      } else if (savedRole === "student") {
+        var sId = localStorage.getItem("auth_hemis");
+        if (sId) {
+          document.getElementById("s-hemis").value = sId;
+          doStudentLogin(true);
+        }
+      }
+    }
+
+    function getMonday(d) {
+      d = new Date(d);
+      var day = d.getDay();
+      var diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    }
+
+    function fmt(d) {
+      var m = String(d.getMonth() + 1).padStart(2, '0');
+      var day = String(d.getDate()).padStart(2, '0');
+      return d.getFullYear() + "-" + m + "-" + day;
+    }
+
+    function initWeek() {
+      weekDates = [];
+      var names = ["Dush", "Sesh", "Chor", "Pay", "Jum"];
+      for (var i = 0; i < 5; i++) {
+        var d = new Date(curMonday);
+        d.setDate(curMonday.getDate() + i);
+        weekDates.push({ 
+          date: fmt(d), 
+          label: String(d.getDate()).padStart(2,'0') + "." + String(d.getMonth()+1).padStart(2,'0') + " (" + names[i] + ")" 
+        });
+      }
+      var weekLabel = document.getElementById("week-label");
+      if (weekLabel) weekLabel.innerText = weekDates[0].label + " — " + weekDates[4].label;
+      buildHeaders();
+    }
+
+    function shiftWeek(n) {
+      curMonday.setDate(curMonday.getDate() + (n * 7));
+      initWeek();
+      if (currentGroup) loadGroupData();
+    }
+
+    function buildHeaders() {
+      var dRow = document.getElementById("days-row"), pRow = document.getElementById("paras-row");
+      if (!dRow || !pRow) return;
+
+      var dHtml = '<th rowspan="2" style="width:30px;">T/r</th>' +
+                  '<th rowspan="2" style="width:95px;">HEMIS ID</th>' +
+                  '<th rowspan="2" style="text-align:left; min-width:180px; padding-left:6px;">Talaba (Kontrakt)</th>';
+      var pHtml = "";
+
+      weekDates.forEach(function(w) {
+        dHtml += '<th colspan="3">' + w.label + '</th>';
+        pHtml += '<th class="sub-th">1</th><th class="sub-th">2</th><th class="sub-th">3</th>';
+      });
+
+      dHtml += '<th rowspan="2" style="width:40px;">Hafta</th>' +
+               '<th rowspan="2" style="width:40px;">Jami</th>' +
+               '<th rowspan="2" style="width:80px;">Sabab</th>' +
+               '<th rowspan="2" style="width:110px;">Izoh</th>' +
+               '<th rowspan="2" style="width:50px;">SMS</th>';
+      dRow.innerHTML = dHtml;
+      pRow.innerHTML = pHtml;
+    }
+
+    function switchAuthTab(type) {
+      document.getElementById("auth-tab-staff").className = "auth-tab" + (type === 'staff' ? " active" : "");
+      document.getElementById("auth-tab-student").className = "auth-tab" + (type === 'student' ? " active" : "");
+      document.getElementById("form-staff").style.display = type === 'staff' ? "block" : "none";
+      document.getElementById("form-student").style.display = type === 'student' ? "block" : "none";
+    }
+
+    async function doStaffLogin(isAuto) {
+      var u = document.getElementById("l-user").value.trim();
+      var p = document.getElementById("l-pass").value.trim();
+      var err = document.getElementById("l-err");
+      var btn = document.getElementById("l-btn");
+
+      err.style.display = "none";
+
+      if (!supabaseClient) {
+        err.innerText = "Xatolik: Supabase yuklanmagan!";
+        err.style.display = "block";
+        return;
+      }
+
+      if (!u || !p) { 
+        err.innerText = "Login va parolni kiriting!"; 
+        err.style.display = "block"; 
+        return; 
+      }
+
+      btn.innerText = "Tekshirilmoqda...";
+      btn.disabled = true;
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('system_users')
+          .select('*')
+          .eq('username', u)
+          .eq('password_hash', p)
+          .maybeSingle();
+
+        btn.innerText = "Tizimga kirish";
+        btn.disabled = false;
+
+        if (error || !data) {
+          if (!isAuto) {
+            err.innerText = "Login yoki parol noto'g'ri!";
+            err.style.display = "block";
+          }
+          localStorage.removeItem("auth_role");
+          return;
+        }
+
+        localStorage.setItem("auth_role", "staff");
+        localStorage.setItem("auth_user", u);
+        localStorage.setItem("auth_pass", p);
+
+        currentUser = data;
+        document.getElementById("login-modal").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        document.getElementById("user-info").innerText = data.full_name + " (" + data.role.toUpperCase() + ")";
+        
+        if (data.role === 'admin') {
+          document.getElementById("tab-teacher-feedback-btn").style.display = "inline-flex";
+        }
+        loadAllGroupsPaginated();
+      } catch(e) {
+        btn.innerText = "Tizimga kirish";
+        btn.disabled = false;
+        err.innerText = "Ulanish xatosi: " + e.message;
+        err.style.display = "block";
+      }
+    }
+
+    async function doStudentLogin(isAuto) {
+      var rawId = document.getElementById("s-hemis").value;
+      var id = rawId.replace(/[^0-9]/g, '').trim();
+      var err = document.getElementById("s-err");
+      var btn = document.getElementById("s-btn");
+
+      err.style.display = "none";
+
+      if (!supabaseClient) {
+        err.innerText = "Xatolik: Baza yuklanmagan!";
+        err.style.display = "block";
+        return;
+      }
+
+      if (!id) { 
+        err.innerText = "HEMIS ID raqamingizni kiriting!"; 
+        err.style.display = "block"; 
+        return; 
+      }
+
+      btn.innerText = "Tekshirilmoqda...";
+      btn.disabled = true;
+
+      try {
+        const { data: st, error } = await supabaseClient
+          .from('students')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (error || !st) {
+          btn.innerText = "Kabinetga kirish";
+          btn.disabled = false;
+          if (!isAuto) {
+            err.innerText = "Bunday HEMIS ID topilmadi!";
+            err.style.display = "block";
+          }
+          localStorage.removeItem("auth_role");
+          return;
+        }
+
+        const { data: contractData } = await supabaseClient
+          .from('contracts')
+          .select('debt_amount')
+          .eq('student_id', id)
+          .maybeSingle();
+
+        st.debt_amount = (contractData && contractData.debt_amount) ? Number(contractData.debt_amount) : 0;
+        currentStudent = st;
+
+        localStorage.setItem("auth_role", "student");
+        localStorage.setItem("auth_hemis", id);
+
+        btn.innerText = "Kabinetga kirish";
+        btn.disabled = false;
+
+        document.getElementById("login-modal").style.display = "none";
+        document.getElementById("student-app").style.display = "block";
+        renderStudentView(st);
+      } catch(e) {
+        btn.innerText = "Kabinetga kirish";
+        btn.disabled = false;
+        err.innerText = "Ulanish xatosi: " + e.message;
+        err.style.display = "block";
+      }
+    }
+
+    async function renderStudentView(st) {
+      document.getElementById("st-fio").innerText = st.fio;
+      document.getElementById("st-id").innerText = st.id;
+      document.getElementById("st-group").innerText = st.group_name;
+
+      loadTeachersSearchList();
+
+      var debtBox = document.getElementById("st-debt-banner");
+      var debtVal = Number(st.debt_amount || 0);
+
+      if (debtVal > 0) {
+        debtBox.style.display = "block";
+        document.getElementById("st-debt-amount").innerText = debtVal.toLocaleString('uz-UZ') + " so'm";
+      } else {
+        debtBox.style.display = "none";
+      }
+
+      const { data: abs } = await supabaseClient
+        .from('attendance')
+        .select('*')
+        .eq('student_id', st.id)
+        .order('attendance_date', { ascending: false });
+
+      var totalSemesterHours = 0;
+      if (abs) {
+        abs.forEach(function(a) {
+          if (a.status !== 'Sababli') totalSemesterHours += Number(a.hours || 0);
+        });
+      }
+      document.getElementById("st-total-hours").innerText = totalSemesterHours + " soat";
+
+      var alertBox = document.getElementById("st-alert-box");
+      alertBox.innerHTML = "";
+
+      if (totalSemesterHours >= 74) {
+        alertBox.innerHTML = '<div class="alert-banner alert-critical">🛑 DIQQAT: Siz 74 soatdan ortiq dars qoldirdingiz! Chetlatilish arafasidasiz. Zudlik bilan dekanatga uchrashing!</div>';
+      } else if (totalSemesterHours >= 36) {
+        alertBox.innerHTML = '<div class="alert-banner alert-hayfsan">⚠️ HAYFSAN: 36 soatdan ortiq dars qoldirdingiz! Rasmiy hayfsan e\'lon qilingan.</div>';
+      } else if (totalSemesterHours >= 18) {
+        alertBox.innerHTML = '<div class="alert-banner alert-warning">⚠️ OGOHLANTIRISH: Dars qoldirishlaringiz 18 soatdan oshdi.</div>';
+      }
+
+      var sTbody = document.getElementById("st-schedule-tbody");
+      sTbody.innerHTML = "";
+      var todayStr = fmt(new Date());
+
+      masterSchedule.forEach(function(item) {
+        var tr = document.createElement("tr");
+        var isToday = item.date === todayStr;
+        var dayBadge = isToday ? '<span class="tag-today">Bugun</span>' : '';
+        if (isToday) tr.style.backgroundColor = '#f0fdf4';
+
+        tr.innerHTML = '<td><b>' + item.day + '</b>' + dayBadge + '</td>' +
+          '<td>' + item.para + '</td>' +
+          '<td>' + item.time + '</td>' +
+          '<td style="text-align:left; font-weight:600; padding-left:8px;">' + item.subject + '</td>' +
+          '<td class="schedule-room">' + item.room + '</td>';
+        sTbody.appendChild(tr);
+      });
+
+      var tbody = document.getElementById("st-absences-tbody");
+      tbody.innerHTML = "";
+      if (!abs || abs.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='6' style='padding:15px; color:#16a34a; font-weight:bold;'>Dars qoldirishlar mavjud emas!</td></tr>";
+      } else {
+        abs.forEach(function(a) {
+          var tr = document.createElement("tr");
+          tr.innerHTML = '<td><b>' + a.attendance_date + '</b></td><td>' + a.para + '</td><td><span class="badge badge-danger">' + a.hours + 's</span></td><td>' + a.status + '</td><td>' + (a.comment || "—") + '</td><td>' + a.marked_by + '</td>';
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    async function loadTeachersSearchList() {
+      const { data: teachers } = await supabaseClient
+        .from('system_users')
+        .select('full_name, role')
+        .eq('role', 'teacher')
+        .order('full_name');
+
+      var datalist = document.getElementById("teachers-datalist");
+      datalist.innerHTML = "";
+      if (teachers) {
+        teachers.forEach(function(t) {
+          var opt = document.createElement("option");
+          opt.value = t.full_name;
+          datalist.appendChild(opt);
+        });
+      }
+    }
+
+    async function submitTeacherRatingSingle() {
+      var inputElem = document.getElementById("teacher-search-input");
+      var selElem = document.getElementById("teacher-rate-select");
+      var btn = document.getElementById("teacher-rate-btn");
+
+      var teacherName = inputElem.value.trim();
+      var selectedVal = selElem.value;
+
+      if (!teacherName) {
+        alert("Ustoz ism-familiyasini kiriting!");
+        inputElem.focus();
+        return;
+      }
+
+      if (!selectedVal) {
+        alert("O'qituvchiga izoh va bahoni tanlang!");
+        selElem.focus();
+        return;
+      }
+
+      var parts = selectedVal.split('|');
+      var score = Number(parts[0]);
+      var comment = parts[1];
+
+      btn.disabled = true;
+      btn.innerText = "Yuborilmoqda...";
+
+      const { error } = await supabaseClient
+        .from('teacher_ratings')
+        .insert([{
+          teacher_name: teacherName,
+          score: score,
+          comment: comment,
+          student_id: currentStudent ? currentStudent.id : null,
+          student_fio: currentStudent ? currentStudent.fio : 'Noma\'lum',
+          group_name: currentStudent ? currentStudent.group_name : '—'
+        }]);
+
+      btn.disabled = false;
+      btn.innerText = "🔒 Fikrni yuborish";
+
+      if (error) {
+        alert("Xatolik: " + error.message);
+      } else {
+        alert("Rahmat! Sizning " + teacherName + " haqidagi fikringiz anonim tarzda qabul qilindi.");
+        inputElem.value = "";
+        selElem.value = "";
+      }
+    }
+
+    async function loadTeacherFeedbackData() {
+      var tbody = document.getElementById("feedback-tbody");
+      tbody.innerHTML = "<tr><td colspan='7' style='padding:15px;'>Izohlar yuklanmoqda...</td></tr>";
+
+      const { data, error } = await supabaseClient
+        .from('teacher_ratings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error || !data) {
+        tbody.innerHTML = "<tr><td colspan='7' style='padding:15px; color:red;'>Xatolik: " + (error ? error.message : "") + "</td></tr>";
+        return;
+      }
+
+      feedbackRows = data;
+
+      if (data.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='7' style='padding:15px; color:#64748b;'>Hozircha hech qanday izoh yo'q.</td></tr>";
+        return;
+      }
+
+      tbody.innerHTML = "";
+      data.forEach(function(r, idx) {
+        var tr = document.createElement("tr");
+        var dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString('uz-UZ') : "—";
+        var badgeCls = "badge-score-" + r.score;
+
+        tr.innerHTML = 
+          '<td>' + (idx + 1) + '</td>' +
+          '<td style="color:#64748b; font-size:10px;">' + dateStr + '</td>' +
+          '<td style="text-align:left; font-weight:bold; color:#0f2e5a; padding-left:6px;">' + r.teacher_name + '</td>' +
+          '<td><span class="badge ' + badgeCls + '">' + r.score + ' ball</span></td>' +
+          '<td style="text-align:left; font-weight:500; padding-left:6px;">' + r.comment + '</td>' +
+          '<td style="text-align:left; font-weight:bold; color:#2563eb; padding-left:6px;">' + (r.student_fio || "—") + ' (' + (r.student_id || "") + ')</td>' +
+          '<td><b style="color:#059669;">' + (r.group_name || "—") + '</b></td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportTeacherFeedbackExcel() {
+      if (feedbackRows.length === 0) {
+        alert("Eksport uchun ma'lumot yo'q!");
+        return;
+      }
+
+      var rows = [["T/r", "Vaqti", "O'qituvchi", "Baho", "Izoh", "Talaba", "HEMIS ID", "Guruh"]];
+      feedbackRows.forEach(function(r, idx) {
+        rows.push([
+          idx + 1,
+          r.created_at ? new Date(r.created_at).toLocaleString('uz-UZ') : "—",
+          r.teacher_name,
+          r.score,
+          r.comment,
+          r.student_fio || "—",
+          r.student_id || "—",
+          r.group_name || "—"
+        ]);
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Ustozlarga_Izohlar");
+      XLSX.writeFile(wb, "Ustozlarga_Berilgan_Izohlar.xlsx");
+    }
+
+    async function loadAllGroupsPaginated() {
+      document.getElementById("groups-box").innerHTML = "Guruhlar yuklanmoqda...";
+      var allRecords = [];
+      var from = 0, step = 1000, hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabaseClient
+          .from('students')
+          .select('id, fio, group_name, faculty, course, study_type')
+          .range(from, from + step - 1);
+
+        if (error || !data || data.length === 0) { hasMore = false; break; }
+        allRecords = allRecords.concat(data);
+        if (data.length < step) hasMore = false;
+        else from += step;
+      }
+
+      var groupMap = {};
+      allRecords.forEach(function(item) {
+        var grp = (item.group_name || "").trim();
+        if (!grp) return;
+        var f = (item.faculty || "Boshqa").trim();
+        var c = cleanCourseNumber(item.course);
+        var s = (item.study_type || "kunduzgi").toLowerCase().trim();
+
+        if (!groupMap[grp]) {
+          groupMap[grp] = { 
+            group_name: grp, 
+            faculty: f, 
+            course: c, 
+            study_type: s,
+            course_form: c + "-kurs " + s,
+            count: 0 
+          };
+        }
+        groupMap[grp].count++;
+      });
+
+      allGroupsMeta = Object.values(groupMap).sort((a, b) => a.group_name.localeCompare(b.group_name));
+
+      var defaultFac = allGroupsMeta.find(g => g.faculty.includes("Iqtisodiyot"));
+      if (defaultFac) currentFaculty = defaultFac.faculty;
+
+      renderFilters();
+      filterAndRenderGroups();
+      renderMonitoringFacultyChips();
+    }
+
+    function renderFilters() {
+      var faculties = [...new Set(allGroupsMeta.map(i => i.faculty).filter(Boolean))].sort();
+      var facBox = document.getElementById("faculties-filter");
+      facBox.innerHTML = "";
+
+      faculties.forEach(function(f) {
+        var btn = document.createElement("button");
+        btn.className = "pill" + (f === currentFaculty ? " active" : "");
+        btn.innerText = f;
+        btn.onclick = function() {
+          currentFaculty = f;
+          renderFilters();
+          filterAndRenderGroups();
+        };
+        facBox.appendChild(btn);
+      });
+
+      var currentFacGroups = allGroupsMeta.filter(g => g.faculty === currentFaculty);
+      var courseForms = [...new Set(currentFacGroups.map(i => i.course_form).filter(Boolean))].sort();
+      var cBox = document.getElementById("courses-filter");
+      cBox.innerHTML = "";
+
+      var allBtn = document.createElement("button");
+      allBtn.className = "pill" + (currentCourseForm === "Barchasi" ? " active" : "");
+      allBtn.innerText = "Barchasi";
+      allBtn.onclick = function() {
+        currentCourseForm = "Barchasi";
+        renderFilters();
+        filterAndRenderGroups();
+      };
+      cBox.appendChild(allBtn);
+
+      courseForms.forEach(function(cf) {
+        var btn = document.createElement("button");
+        btn.className = "pill" + (cf === currentCourseForm ? " active" : "");
+        btn.innerText = cf;
+        btn.onclick = function() {
+          currentCourseForm = cf;
+          renderFilters();
+          filterAndRenderGroups();
+        };
+        cBox.appendChild(btn);
+      });
+    }
+
+    function filterAndRenderGroups() {
+      var filtered = allGroupsMeta.filter(function(item) {
+        var matchFac = (item.faculty === currentFaculty);
+        var matchCF = (currentCourseForm === "Barchasi" || item.course_form === currentCourseForm);
+        return matchFac && matchCF;
+      });
+
+      var box = document.getElementById("groups-box");
+      box.innerHTML = "";
+
+      if (filtered.length === 0) {
+        box.innerHTML = "<span style='color:#64748b; font-size:11px;'>Guruhlar yo'q</span>";
+        return;
+      }
+
+      filtered.forEach(function(g) {
+        var c = document.createElement("span");
+        c.className = "group-pill" + (g.group_name === currentGroup ? " active" : "");
+        c.innerHTML = g.group_name + " <span style='font-size:10px; opacity:0.85;'>(" + g.count + ")</span>";
+        c.onclick = function() {
+          currentGroup = g.group_name;
+          filterAndRenderGroups();
+          loadGroupData();
+        };
+        box.appendChild(c);
+      });
+
+      var isCurrentPresent = filtered.some(g => g.group_name === currentGroup);
+      if (!isCurrentPresent && filtered.length > 0) {
+        currentGroup = filtered[0].group_name;
+        filterAndRenderGroups();
+        loadGroupData();
+      }
+    }
+
+    async function loadGroupData() {
+      var tbody = document.getElementById("tbody");
+      tbody.innerHTML = "<tr><td colspan='25' style='padding:15px;'>Yuklanmoqda...</td></tr>";
+
+      const { data: stList } = await supabaseClient
+        .from('students')
+        .select('*, contracts(debt_amount)')
+        .eq('group_name', currentGroup)
+        .order('fio');
+
+      studentsList = stList || [];
+
+      var start = weekDates[0].date;
+      var end = weekDates[4].date;
+
+      const { data: attList } = await supabaseClient
+        .from('attendance')
+        .select('*')
+        .eq('group_name', currentGroup)
+        .gte('attendance_date', start)
+        .lte('attendance_date', end);
+
+      attendanceMap = {};
+      pendingChanges = {};
+      if (attList) {
+        attList.forEach(function(a) {
+          attendanceMap[a.student_id + "_" + a.attendance_date + "_" + a.para] = a;
+        });
+      }
+
+      const { data: allAbs } = await supabaseClient
+        .from('attendance')
+        .select('student_id, hours, status')
+        .eq('group_name', currentGroup);
+
+      var totalMap = {};
+      if (allAbs) {
+        allAbs.forEach(function(item) {
+          if (item.status !== 'Sababli') {
+            totalMap[item.student_id] = (totalMap[item.student_id] || 0) + Number(item.hours || 0);
+          }
+        });
+      }
+      studentsList.forEach(function(st) {
+        st.totalSemesterHours = totalMap[st.id] || 0;
+      });
+
+      document.getElementById("save-btn").disabled = true;
+      renderAttendanceTable();
+    }
+
+    function renderAttendanceTable() {
+      var tbody = document.getElementById("tbody");
+      tbody.innerHTML = "";
+
+      var statsBar = document.getElementById("group-stats-bar");
+      if (studentsList.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='25' style='padding:15px; color:#64748b;'>Talabalar topilmadi</td></tr>";
+        if (statsBar) statsBar.style.display = "none";
+        return;
+      }
+
+      var debtCount = 0;
+      var totalDebt = 0;
+      studentsList.forEach(function(st) {
+        var d = (st.contracts && st.contracts[0]) ? Number(st.contracts[0].debt_amount) : 0;
+        if (d > 0) { debtCount++; totalDebt += d; }
+      });
+
+      if (statsBar) {
+        statsBar.style.display = "flex";
+        statsBar.innerHTML = '<span>👥 Talabalar: <b>' + studentsList.length + ' nafar</b></span> | ' +
+          '<span>🔴 Qarzdor: <b style="color:#b91c1c;">' + debtCount + '</b></span> | ' +
+          '<span>💰 Qarz: <b style="color:#b91c1c;">' + totalDebt.toLocaleString('uz-UZ') + " so'm</b></span>";
+      }
+
+      var isAdmin = currentUser && currentUser.role === 'admin';
+
+      studentsList.forEach(function(st, idx) {
+        var tr = document.createElement("tr");
+        var debtVal = (st.contracts && st.contracts[0]) ? Number(st.contracts[0].debt_amount) : 0;
+        var debtBadge = debtVal > 0 
+          ? "<span class='debt-badge-danger'>🔴 " + (debtVal / 1000000).toFixed(1) + " mln</span>" 
+          : "<span class='debt-badge-ok'>🟢 To'langan</span>";
+
+        var cells = '<td>' + (idx + 1) + '</td><td style="font-family:monospace; font-size:10px;">' + st.id + '</td>' +
+          '<td class="student-cell"><span style="font-weight:600;">' + st.fio + '</span>' + debtBadge + '</td>';
+
+        var weekHours = 0;
+
+        weekDates.forEach(function(w) {
+          for (var p = 1; p <= 3; p++) {
+            var k = st.id + "_" + w.date + "_" + p;
+            var isSavedInDb = !!attendanceMap[k];
+            var act = 'present';
+
+            if (pendingChanges[k]) act = pendingChanges[k].action;
+            else if (isSavedInDb) act = (attendanceMap[k].status === 'Kechikdi' ? 'late' : 'absent');
+
+            if (act === 'absent') weekHours += 2;
+
+            var cls = "cell-btn" + (act === 'absent' ? " absent" : (act === 'late' ? " late" : ""));
+            var txt = (act === 'absent' ? "2" : (act === 'late' ? "K" : "+"));
+
+            var isLocked = isSavedInDb && !isAdmin;
+            if (isLocked) cls += " locked";
+
+            cells += '<td><button class="' + cls + '" onclick="toggleCell(\'' + st.id + '\',\'' + w.date + '\',' + p + ',' + isSavedInDb + ')">' + txt + '</button></td>';
+          }
+        });
+
+        var totalAll = Number(st.totalSemesterHours || 0);
+
+        cells += '<td style="font-weight:bold; color:' + (weekHours > 0 ? 'red' : 'gray') + '">' + weekHours + '</td>';
+        cells += '<td><b>' + totalAll + 's</b></td>';
+        cells += '<td><select class="table-select" onchange="setRowSabab(\'' + st.id + '\', this.value)"><option value="Sababsiz">Sababsiz</option><option value="Sababli">Sababli</option></select></td>';
+        cells += '<td><select class="table-select" onchange="setRowComment(\'' + st.id + '\', this.value)">' +
+                 '<option value="">— Izoh —</option>' +
+                 '<option value="1. Tartibli">1. Tartibli</option>' +
+                 '<option value="2. O\'zlashtirmaydi">2. O\'zlashtirmaydi</option>' +
+                 '<option value="3. Surunkali kelmaydi">3. Surunkali kelmaydi</option>' +
+                 '</select></td>';
+        cells += '<td><button class="btn-sms" onclick="sendStudentSMS(\'' + st.id + '\',\'' + encodeURIComponent(st.fio) + '\')">SMS</button></td>';
+
+        tr.innerHTML = cells;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleCell(stId, date, p, isSavedInDb) {
+      var isAdmin = currentUser && currentUser.role === 'admin';
+
+      if (isSavedInDb && !isAdmin) {
+        alert("DIQQAT: Ushbu dars saqlangan va bloklangan!\nUni o'chirish faqat ADMINGA tegishli.");
+        return;
+      }
+
+      var k = stId + "_" + date + "_" + p;
+      var curAct = 'present';
+
+      if (pendingChanges[k]) curAct = pendingChanges[k].action;
+      else if (attendanceMap[k]) curAct = (attendanceMap[k].status === 'Kechikdi' ? 'late' : 'absent');
+
+      if (curAct === 'present') pendingChanges[k] = { student_id: stId, attendance_date: date, para: p, action: 'absent', status: 'Sababsiz', hours: 2, comment: '' };
+      else if (curAct === 'absent') pendingChanges[k] = { student_id: stId, attendance_date: date, para: p, action: 'late', status: 'Kechikdi', hours: 0, comment: '' };
+      else pendingChanges[k] = { student_id: stId, attendance_date: date, para: p, action: 'present' };
+
+      document.getElementById("save-btn").disabled = false;
+      renderAttendanceTable();
+    }
+
+    function setRowSabab(stId, val) {
+      for (var k in pendingChanges) {
+        if (k.startsWith(stId + "_") && pendingChanges[k].action === 'absent') {
+          pendingChanges[k].status = val;
+        }
+      }
+    }
+
+    function setRowComment(stId, val) {
+      for (var k in pendingChanges) {
+        if (k.startsWith(stId + "_")) {
+          pendingChanges[k].comment = val;
+        }
+      }
+    }
+
+    async function saveAttendanceData() {
+      var btn = document.getElementById("save-btn");
+      btn.innerText = "Saqlanmoqda...";
+      btn.disabled = true;
+
+      var upsertRows = [];
+      var deleteKeys = [];
+
+      for (var k in pendingChanges) {
+        var item = pendingChanges[k];
+        if (item.action === 'present') {
+          deleteKeys.push(item);
+        } else {
+          upsertRows.push({
+            attendance_date: item.attendance_date,
+            para: item.para,
+            group_name: currentGroup,
+            student_id: item.student_id,
+            hours: item.hours,
+            status: item.status,
+            comment: item.comment || null,
+            marked_by: currentUser ? currentUser.full_name : 'Dekan'
+          });
+        }
+      }
+
+      try {
+        if (upsertRows.length > 0) {
+          await supabaseClient.from('attendance').upsert(upsertRows, { onConflict: 'attendance_date,para,student_id' });
+        }
+
+        for (var d = 0; d < deleteKeys.length; d++) {
+          var del = deleteKeys[d];
+          await supabaseClient
+            .from('attendance')
+            .delete()
+            .eq('attendance_date', del.attendance_date)
+            .eq('para', del.para)
+            .eq('student_id', del.student_id);
+        }
+
+        btn.innerText = "Bazaga Saqlash";
+        alert("Davomat saqlandi va bloklandi!");
+        loadGroupData();
+      } catch(e) {
+        btn.innerText = "Bazaga Saqlash";
+        btn.disabled = false;
+        alert("Xatolik: " + e.message);
+      }
+    }
+
+    function openScheduleModal() {
+      if (!currentGroup) {
+        alert("Iltimos, avval guruhni tanlang!");
+        return;
+      }
+      document.getElementById("schedule-modal-title").innerText = currentGroup + " guruhi dars jadvali";
+      var tbody = document.getElementById("schedule-tbody");
+      tbody.innerHTML = "";
+
+      var todayStr = fmt(new Date());
+
+      masterSchedule.forEach(function(item) {
+        var tr = document.createElement("tr");
+        var isToday = item.date === todayStr;
+        var dayBadge = isToday ? '<span class="tag-today">Bugun</span>' : '';
+        if (isToday) tr.style.backgroundColor = '#f0fdf4';
+
+        tr.innerHTML = '<td><b>' + item.day + '</b>' + dayBadge + '</td>' +
+          '<td>' + item.para + '</td>' +
+          '<td>' + item.time + '</td>' +
+          '<td style="text-align:left; font-weight:600; padding-left:8px;">' + item.subject + '</td>' +
+          '<td class="schedule-room">' + item.room + '</td>';
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("schedule-modal").style.display = "flex";
+    }
+
+    function closeScheduleModal() {
+      document.getElementById("schedule-modal").style.display = "none";
+    }
+
+    // =========================================================================
+    // MONITORING VA YUKLASH FUNKSIYALARI (KURSLAR STATISTIKASI BILAN)
+    // =========================================================================
+    function initMonitoringDates() {
+      var today = fmt(new Date());
+      document.getElementById("m-date-start").value = today;
+      document.getElementById("m-date-end").value = today;
+    }
+
+    function setMonitoringMode(mode) {
+      document.getElementById("m-btn-today").className = "pill" + (mode === 'today' ? " active" : "");
+      document.getElementById("m-btn-week").className = "pill" + (mode === 'week' ? " active" : "");
+      document.getElementById("m-btn-month").className = "pill" + (mode === 'month' ? " active" : "");
+
+      var now = new Date();
+      if (mode === 'today') {
+        var today = fmt(now);
+        document.getElementById("m-date-start").value = today;
+        document.getElementById("m-date-end").value = today;
+      } else if (mode === 'week') {
+        var mon = getMonday(now);
+        var fri = new Date(mon);
+        fri.setDate(mon.getDate() + 4);
+        document.getElementById("m-date-start").value = fmt(mon);
+        document.getElementById("m-date-end").value = fmt(fri);
+      } else if (mode === 'month') {
+        var y = now.getFullYear(), m = now.getMonth();
+        document.getElementById("m-date-start").value = fmt(new Date(y, m, 1));
+        document.getElementById("m-date-end").value = fmt(new Date(y, m + 1, 0));
+      }
+      loadMonitoringData();
+    }
+
+    function setStudyTypeFilter(type) {
+      selectedStudyType = type;
+      document.getElementById("shakl-all").className = "pill" + (type === 'Barchasi' ? " active" : "");
+      document.getElementById("shakl-kunduzgi").className = "pill" + (type === 'kunduzgi' ? " active" : "");
+      document.getElementById("shakl-kechki").className = "pill" + (type === 'kechki' ? " active" : "");
+      document.getElementById("shakl-sirtqi").className = "pill" + (type === 'sirtqi' ? " active" : "");
+      updateMonitoringFilterTitle();
+      loadMonitoringData();
+    }
+
+    function setFacultyFilter(fac) {
+      selectedFacultyFilter = fac;
+      renderMonitoringFacultyChips();
+      updateMonitoringFilterTitle();
+      loadMonitoringData();
+    }
+
+    function setCourseFilter(kurs) {
+      selectedCourseFilter = kurs;
+      document.getElementById("kurs-all").className = "pill" + (kurs === 'Barchasi' ? " active" : "");
+      document.getElementById("kurs-1").className = "pill" + (kurs === '1' ? " active" : "");
+      document.getElementById("kurs-2").className = "pill" + (kurs === '2' ? " active" : "");
+      document.getElementById("kurs-3").className = "pill" + (kurs === '3' ? " active" : "");
+      document.getElementById("kurs-4").className = "pill" + (kurs === '4' ? " active" : "");
+      updateMonitoringFilterTitle();
+      loadMonitoringData();
+    }
+
+    function renderMonitoringFacultyChips() {
+      var faculties = ["Barchasi", ...new Set(allGroupsMeta.map(i => i.faculty).filter(Boolean))].sort();
+      var box = document.getElementById("m-faculties-filter");
+      if (!box) return;
+      box.innerHTML = "";
+
+      faculties.forEach(function(f) {
+        var btn = document.createElement("button");
+        btn.className = "pill" + (f === selectedFacultyFilter ? " active" : "");
+        btn.innerText = f;
+        btn.onclick = function() { setFacultyFilter(f); };
+        box.appendChild(btn);
+      });
+    }
+
+    function updateMonitoringFilterTitle() {
+      var titleParts = [];
+      if (selectedFacultyFilter !== "Barchasi") titleParts.push(selectedFacultyFilter);
+      if (selectedCourseFilter !== "Barchasi") titleParts.push(selectedCourseFilter + "-kurs");
+      if (selectedStudyType !== "Barchasi") titleParts.push(selectedStudyType.toUpperCase());
+      
+      var lbl = titleParts.length > 0 ? titleParts.join(" | ") : "Barchasi";
+      var el = document.getElementById("summary-filter-label");
+      if (el) el.innerText = lbl;
+    }
+
+    async function loadMonitoringData() {
+      var dStart = document.getElementById("m-date-start").value;
+      var dEnd = document.getElementById("m-date-end").value;
+
+      var tbody = document.getElementById("monitoring-tbody");
+      tbody.innerHTML = "<tr><td colspan='12' style='padding:15px;'>Yuklanmoqda...</td></tr>";
+
+      const { data, error } = await supabaseClient
+        .from('attendance')
+        .select('*, students(fio, faculty, course, study_type)')
+        .gte('attendance_date', dStart)
+        .lte('attendance_date', dEnd)
+        .order('attendance_date', { ascending: false });
+
+      if (error || !data) {
+        tbody.innerHTML = "<tr><td colspan='12' style='padding:15px; color:red;'>Xatolik: " + (error ? error.message : "") + "</td></tr>";
+        return;
+      }
+
+      // FAKULTET, KURS VA SHAKL KESIMIDA FILTERLASH
+      var filtered = data.filter(function(row) {
+        var st = row.students || {};
+        var matchShakl = (selectedStudyType === "Barchasi") || ((st.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
+        var matchFac = (selectedFacultyFilter === "Barchasi") || (st.faculty === selectedFacultyFilter);
+        
+        var cleanRowCourse = cleanCourseNumber(st.course);
+        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanRowCourse === String(selectedCourseFilter));
+
+        return matchShakl && matchFac && matchCourse;
+      });
+
+      monitoringRows = filtered;
+
+      var uniqueStudents = new Set(filtered.map(i => i.student_id));
+      var totalHours = filtered.reduce((acc, cur) => acc + Number(cur.hours || 0), 0);
+
+      document.getElementById("m-total-students").innerText = uniqueStudents.size + " nafar";
+      document.getElementById("m-total-hours").innerText = totalHours + " soat";
+
+      // 1. KURSLAR KESIMIDA UMUMIY SONI VA FOIZINI RENDERING QILISH
+      renderCourseOverallSummaryCards(data);
+
+      // 2. GURUHLAR BO'YICHA KARTALAR
+      renderGroupSummaryCards(filtered);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='12' style='padding:15px; color:#16a34a; font-weight:bold;'>Tanlangan mezonlar bo'yicha dars qoldirilmagan!</td></tr>";
+        return;
+      }
+
+      tbody.innerHTML = "";
+      filtered.forEach(function(row, idx) {
+        var tr = document.createElement("tr");
+        var sababBadge = row.status === 'Sababli' 
+          ? "<span class='badge badge-spravka'>Spravka</span>" 
+          : "<span class='badge badge-danger'>Sababsiz</span>";
+
+        var cNum = row.students ? cleanCourseNumber(row.students.course) : "1";
+
+        tr.innerHTML = '<td>' + (idx + 1) + '</td>' +
+          '<td><b>' + row.attendance_date + '</b></td>' +
+          '<td style="text-align:left; font-weight:600;">' + (row.students ? row.students.fio : "—") + '</td>' +
+          '<td><b style="color:#2563eb;">' + row.group_name + '</b></td>' +
+          '<td>' + cNum + '-kurs</td>' +
+          '<td>' + (row.students && row.students.study_type ? row.students.study_type : "Kunduzgi") + '</td>' +
+          '<td>' + (row.students ? row.students.faculty : "—") + '</td>' +
+          '<td>' + row.para + '-para</td>' +
+          '<td><span class="badge badge-danger">' + row.hours + 's</span></td>' +
+          '<td>' + sababBadge + '</td>' +
+          '<td>' + (row.comment || "—") + '</td>' +
+          '<td style="color:#0f766e; font-weight:600;">' + row.marked_by + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    // KURSLAR KESIMIDA UMUMIY DAVOMAT KARTALARINI CHIQARISH (1, 2, 3, 4-kurslar va Jami)
+    function renderCourseOverallSummaryCards(allAbsencesData) {
+      var container = document.getElementById("course-summary-container");
+      if (!container) return;
+      container.innerHTML = "";
+
+      // Guruhlarni filtr holatiga qarab ajratish (fakultet va ta'lim shakli bo'yicha)
+      var relevantGroups = allGroupsMeta.filter(function(g) {
+        var matchShakl = (selectedStudyType === "Barchasi") || ((g.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
+        var matchFac = (selectedFacultyFilter === "Barchasi") || (g.faculty === selectedFacultyFilter);
+        return matchShakl && matchFac;
+      });
+
+      // Kelmaganlarni guruhlar bo'yicha hisoblash
+      var absentMap = {};
+      allAbsencesData.forEach(function(a) {
+        if (!absentMap[a.group_name]) absentMap[a.group_name] = new Set();
+        absentMap[a.group_name].add(a.student_id);
+      });
+
+      // Kurslar bo'yicha stat yig'ish (1, 2, 3, 4)
+      var courseStats = {
+        "1": { total: 0, absent: 0 },
+        "2": { total: 0, absent: 0 },
+        "3": { total: 0, absent: 0 },
+        "4": { total: 0, absent: 0 }
+      };
+
+      var grandTotal = 0;
+      var grandAbsent = 0;
+
+      relevantGroups.forEach(function(g) {
+        var c = cleanCourseNumber(g.course);
+        var grpTotal = g.count || 0;
+        var grpAbsent = absentMap[g.group_name] ? absentMap[g.group_name].size : 0;
+
+        if (courseStats[c]) {
+          courseStats[c].total += grpTotal;
+          courseStats[c].absent += grpAbsent;
+        }
+
+        grandTotal += grpTotal;
+        grandAbsent += grpAbsent;
+      });
+
+      // 1-4 kurslar uchun kartalar chiqarish
+      ["1", "2", "3", "4"].forEach(function(kursNo) {
+        var st = courseStats[kursNo];
+        var present = Math.max(0, st.total - st.absent);
+        var pct = st.total > 0 ? Math.round((present / st.total) * 100) : 100;
+
+        var card = document.createElement("div");
+        card.className = "course-stat-card";
+        card.innerHTML = 
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">' +
+            '<b style="font-size:13px; color:#1e3a8a;">🎓 ' + kursNo + '-kurs</b>' +
+            '<span style="font-size:12px; font-weight:bold; color:' + (pct >= 90 ? '#16a34a' : (pct >= 75 ? '#d97706' : '#dc2626')) + ';">' + pct + '%</span>' +
+          '</div>' +
+          '<div style="font-size:11px; line-height:1.6;">' +
+            '<div>Jami talaba: <b>' + st.total + ' nafar</b></div>' +
+            '<div style="color:#16a34a;">Kelgan: <b>' + present + ' nafar</b></div>' +
+            '<div style="color:#dc2626;">Kelmagan: <b>' + st.absent + ' nafar</b></div>' +
+          '</div>' +
+          '<div class="progress-bar-bg" style="margin-top:6px;">' +
+            '<div class="progress-bar-fill" style="width:' + pct + '%;"></div>' +
+          '</div>';
+        container.appendChild(card);
+      });
+
+      // UMUMIY YAKUNIY KARTA
+      var grandPresent = Math.max(0, grandTotal - grandAbsent);
+      var grandPct = grandTotal > 0 ? Math.round((grandPresent / grandTotal) * 100) : 100;
+
+      var totalCard = document.createElement("div");
+      totalCard.className = "course-stat-card total-card";
+      totalCard.innerHTML = 
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">' +
+          '<b style="font-size:13px; color:#065f46;">📊 JAMI KO\'RSATKICH</b>' +
+          '<span style="font-size:13px; font-weight:bold; color:#059669;">' + grandPct + '%</span>' +
+        '</div>' +
+        '<div style="font-size:11px; line-height:1.6;">' +
+          '<div>Jami kontingent: <b>' + grandTotal + ' nafar</b></div>' +
+          '<div style="color:#059669;">Jami kelgan: <b>' + grandPresent + ' nafar</b></div>' +
+          '<div style="color:#dc2626;">Jami kelmagan: <b>' + grandAbsent + ' nafar</b></div>' +
+        '</div>' +
+        '<div class="progress-bar-bg" style="margin-top:6px;">' +
+          '<div class="progress-bar-fill" style="background:#059669; width:' + grandPct + '%;"></div>' +
+        '</div>';
+      container.appendChild(totalCard);
+    }
+
+    function renderGroupSummaryCards(absencesData) {
+      var container = document.getElementById("summary-cards");
+      container.innerHTML = "";
+
+      var absentMap = {};
+      absencesData.forEach(function(a) {
+        if (!absentMap[a.group_name]) absentMap[a.group_name] = new Set();
+        absentMap[a.group_name].add(a.student_id);
+      });
+
+      var targetGroups = allGroupsMeta.filter(function(g) {
+        var matchShakl = (selectedStudyType === "Barchasi") || ((g.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
+        var matchFac = (selectedFacultyFilter === "Barchasi") || (g.faculty === selectedFacultyFilter);
+        
+        var cleanGrpCourse = cleanCourseNumber(g.course);
+        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanGrpCourse === String(selectedCourseFilter));
+
+        return matchShakl && matchFac && matchCourse;
+      });
+
+      if (targetGroups.length === 0) {
+        container.innerHTML = "<div style='color:#64748b; font-size:11px;'>Ushbu tanlov bo'yicha guruhlar mavjud emas.</div>";
+        return;
+      }
+
+      targetGroups.forEach(function(g) {
+        var total = g.count || 0;
+        var absentCount = absentMap[g.group_name] ? absentMap[g.group_name].size : 0;
+        var presentCount = Math.max(0, total - absentCount);
+        var percent = total > 0 ? Math.round((presentCount / total) * 100) : 100;
+
+        var card = document.createElement("div");
+        card.className = "group-stat-card";
+        card.innerHTML = 
+          '<div class="group-stat-header">' +
+            '<b style="font-size:12px; color:#0f2e5a;">' + g.group_name + '</b>' +
+            '<span style="font-size:11px; font-weight:bold; color:' + (percent >= 90 ? '#16a34a' : (percent >= 70 ? '#d97706' : '#dc2626')) + ';">' + percent + '%</span>' +
+          '</div>' +
+          '<div style="font-size:11px; display:flex; justify-content:space-between; margin-top:2px;">' +
+            '<span>Jami: <b>' + total + '</b></span>' +
+            '<span style="color:#16a34a;">Keldi: <b>' + presentCount + '</b></span>' +
+            '<span style="color:#dc2626;">Kelmadi: <b>' + absentCount + '</b></span>' +
+          '</div>' +
+          '<div class="progress-bar-bg">' +
+            '<div class="progress-bar-fill" style="width:' + percent + '%;"></div>' +
+          '</div>';
+        container.appendChild(card);
+      });
+    }
+
+    async function sendMonitoringToTelegram() {
+      var dStart = document.getElementById("m-date-start").value;
+      var absentMap = {};
+      monitoringRows.forEach(function(a) {
+        if (!absentMap[a.group_name]) absentMap[a.group_name] = new Set();
+        absentMap[a.group_name].add(a.student_id);
+      });
+
+      var targetGroups = allGroupsMeta.filter(function(g) {
+        var matchShakl = (selectedStudyType === "Barchasi") || ((g.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
+        var matchFac = (selectedFacultyFilter === "Barchasi") || (g.faculty === selectedFacultyFilter);
+        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanCourseNumber(g.course) === String(selectedCourseFilter));
+        return matchShakl && matchFac && matchCourse;
+      });
+
+      var text = "📊 *ORIENTAL UNIVERSITETI — DAVOMAT HISOBOTI*\n";
+      text += "🗓 Sana: `" + dStart + "`\n";
+      text += "🏛 Fakultet: *" + selectedFacultyFilter + "*\n";
+      text += "🎓 Kurs: *" + (selectedCourseFilter === "Barchasi" ? "Barchasi" : selectedCourseFilter + "-kurs") + "* | Shakl: *" + selectedStudyType.toUpperCase() + "*\n";
+      text += "👥 Kelmaganlar: *" + document.getElementById("m-total-students").innerText + "* | ⏳ *" + document.getElementById("m-total-hours").innerText + "*\n";
+      text += "──────────────────────────\n\n";
+
+      targetGroups.slice(0, 35).forEach(function(g) {
+        var total = g.count || 0;
+        var absent = absentMap[g.group_name] ? absentMap[g.group_name].size : 0;
+        var present = Math.max(0, total - absent);
+        text += "🏛 *" + g.group_name + "*: " + total + " tadan *" + present + " kelgan* (" + absent + " kelmagan)\n";
+      });
+
+      try {
+        var upRes = await fetch("https://api.telegram.org/bot" + TG_BOT_TOKEN + "/getUpdates");
+        var upJson = await upRes.json();
+        var targetChatId = null;
+
+        if (upJson.ok && upJson.result && upJson.result.length > 0) {
+          for (var idx = upJson.result.length - 1; idx >= 0; idx--) {
+            var item = upJson.result[idx];
+            if (item.message && item.message.chat) { targetChatId = item.message.chat.id; break; }
+            if (item.my_chat_member && item.my_chat_member.chat) { targetChatId = item.my_chat_member.chat.id; break; }
+          }
+        }
+
+        if (!targetChatId) {
+          alert("Telegram guruh topilmadi!");
+          return;
+        }
+
+        var res = await fetch("https://api.telegram.org/bot" + TG_BOT_TOKEN + "/sendMessage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            text: text,
+            parse_mode: "Markdown"
+          })
+        });
+
+        var resJson = await res.json();
+        if (resJson.ok) alert("Filtrlangan hisobot Telegram guruhga yuborildi!");
+        else alert("Xato: " + resJson.description);
+      } catch (err) {
+        alert("Xatolik: " + err.message);
+      }
+    }
+
+    function exportMonitoringExcel() {
+      var dStart = document.getElementById("m-date-start").value;
+      var absentMap = {};
+      monitoringRows.forEach(function(a) {
+        if (!absentMap[a.group_name]) absentMap[a.group_name] = new Set();
+        absentMap[a.group_name].add(a.student_id);
+      });
+
+      var targetGroups = allGroupsMeta.filter(function(g) {
+        var matchShakl = (selectedStudyType === "Barchasi") || ((g.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
+        var matchFac = (selectedFacultyFilter === "Barchasi") || (g.faculty === selectedFacultyFilter);
+        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanCourseNumber(g.course) === String(selectedCourseFilter));
+        return matchShakl && matchFac && matchCourse;
+      });
+
+      var summaryRows = [["T/r", "Fakultet", "Kurs", "Guruh", "Ta'lim shakli", "Jami talaba", "Kelgan", "Kelmagan", "Davomat foizi"]];
+      targetGroups.forEach(function(g, idx) {
+        var total = g.count || 0;
+        var absent = absentMap[g.group_name] ? absentMap[g.group_name].size : 0;
+        var present = Math.max(0, total - absent);
+        var pct = total > 0 ? Math.round((present / total) * 100) + "%" : "100%";
+        summaryRows.push([idx + 1, g.faculty, cleanCourseNumber(g.course) + "-kurs", g.group_name, g.study_type || "Kunduzgi", total, present, absent, pct]);
+      });
+
+      var detailRows = [["T/r", "Sana", "Fakultet", "Kurs", "Guruh", "Shakl", "Talaba F.I.Sh.", "HEMIS ID", "Para", "Soat", "Holati", "Izoh", "Belgilagan"]];
+      monitoringRows.forEach(function(r, idx) {
+        detailRows.push([
+          idx + 1,
+          r.attendance_date,
+          r.students ? r.students.faculty : "—",
+          r.students ? (cleanCourseNumber(r.students.course) + "-kurs") : "—",
+          r.group_name,
+          r.students && r.students.study_type ? r.students.study_type : "Kunduzgi",
+          r.students ? r.students.fio : "—",
+          r.student_id,
+          r.para + "-para",
+          r.hours,
+          r.status,
+          r.comment || "—",
+          r.marked_by
+        ]);
+      });
+
+      var wb = XLSX.utils.book_new();
+      var ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+      var ws2 = XLSX.utils.aoa_to_sheet(detailRows);
+      XLSX.utils.book_append_sheet(wb, ws1, "Guruhlar_Svodkasi");
+      XLSX.utils.book_append_sheet(wb, ws2, "Kelmagan_Talabalar");
+
+      var fileName = "Davomat_" + (selectedFacultyFilter !== "Barchasi" ? selectedFacultyFilter + "_" : "") + (selectedCourseFilter !== "Barchasi" ? selectedCourseFilter + "-kurs_" : "") + selectedStudyType + "_" + dStart + ".xlsx";
+      XLSX.writeFile(wb, fileName);
+    }
+
+    function sendStudentSMS(hemisId, fioEncoded) {
+      var fio = decodeURIComponent(fioEncoded);
+      alert("SMS yuborildi: \n" + fio + " (" + hemisId + ")");
+    }
+
+    function exportFullGroupWeeklyReport() {
+      if (studentsList.length === 0) { alert("Talabalar yo'q!"); return; }
+      var rows = [["T/r", "HEMIS ID", "F.I.Sh."]];
+      weekDates.forEach(w => rows[0].push(w.label + " (1)", w.label + " (2)", w.label + " (3)"));
+      rows[0].push("Hafta", "Jami");
+
+      studentsList.forEach(function(st, idx) {
+        var r = [idx + 1, st.id, st.fio];
+        var weekH = 0;
+        weekDates.forEach(function(w) {
+          for (var p = 1; p <= 3; p++) {
+            var k = st.id + "_" + w.date + "_" + p;
+            if (attendanceMap[k]) {
+              if (attendanceMap[k].status === 'Kechikdi') r.push("K");
+              else { r.push("2"); weekH += 2; }
+            } else {
+              r.push("+");
+            }
+          }
+        });
+        r.push(weekH, st.totalSemesterHours || 0);
+        rows.push(r);
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Jurnal");
+      XLSX.writeFile(wb, currentGroup + "_Jurnal.xlsx");
+    }
+
+    function switchView(view) {
+      document.getElementById("view-groups").style.display = view === 'groups' ? "block" : "none";
+      document.getElementById("view-grades").style.display = view === 'grades' ? "block" : "none";
+      document.getElementById("view-monitoring").style.display = view === 'monitoring' ? "block" : "none";
+      document.getElementById("view-teacher-feedback").style.display = view === 'teacher-feedback' ? "block" : "none";
+
+      document.getElementById("tab-groups-btn").className = "nav-btn" + (view === 'groups' ? " active" : "");
+      document.getElementById("tab-grades-btn").className = "nav-btn" + (view === 'grades' ? " active" : "");
+      document.getElementById("tab-monitoring-btn").className = "nav-btn" + (view === 'monitoring' ? " active" : "");
+      document.getElementById("tab-teacher-feedback-btn").className = "nav-btn" + (view === 'teacher-feedback' ? " active" : "");
+
+      if (view === 'grades') renderGradesView();
+      if (view === 'monitoring') loadMonitoringData();
+      if (view === 'teacher-feedback') loadTeacherFeedbackData();
+    }
+
+    function renderGradesView() {
+      document.getElementById("grades-group-label").innerText = currentGroup || "Tanlanmagan";
+      var tbody = document.getElementById("grades-tbody");
+      tbody.innerHTML = "";
+
+      if (studentsList.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='4' style='padding:15px; color:#64748b;'>Talabalar yo'q</td></tr>";
+        return;
+      }
+
+      studentsList.forEach(function(st, idx) {
+        var tr = document.createElement("tr");
+        tr.innerHTML = '<td>' + (idx + 1) + '</td><td style="font-family:monospace;">' + st.id + '</td>' +
+          '<td style="text-align:left; font-weight:600;">' + st.fio + '</td>' +
+          '<td><select class="table-select" id="baho-' + st.id + '">' +
+            '<option value="">—</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option>' +
+          '</select></td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function saveGradesData() {
+      var fan = document.getElementById("grade-subject-input").value.trim();
+      if (!fan) { alert("Fan nomini kiriting!"); return; }
+
+      var rows = [];
+      studentsList.forEach(function(st) {
+        var sel = document.getElementById("baho-" + st.id);
+        if (sel && sel.value !== "") {
+          rows.push({
+            group_name: currentGroup,
+            student_id: st.id,
+            subject: fan,
+            score: Number(sel.value),
+            marked_by: currentUser ? currentUser.full_name : 'Dekan'
+          });
+        }
+      });
+
+      if (rows.length === 0) { alert("Baho tanlanmadi!"); return; }
+
+      const { error } = await supabaseClient.from('grades').insert(rows);
+      if (error) { alert("Xato: " + error.message); }
+      else { 
+        alert("Baholar saqlandi!"); 
+        studentsList.forEach(function(st) {
+          var sel = document.getElementById("baho-" + st.id);
+          if (sel) sel.value = "";
+        });
+      }
+    }
+
+    function logout() {
+      localStorage.clear();
+      location.reload();
+    }
+  </script>
+</body>
+</html>
