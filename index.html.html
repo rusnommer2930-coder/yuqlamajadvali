@@ -64,7 +64,6 @@
     .student-cell { text-align: left; padding-left: 8px; white-space: nowrap; max-width: 220px; min-width: 170px; overflow: hidden; text-overflow: ellipsis; }
     .debt-badge-danger { display: inline-block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
     .debt-badge-ok { display: inline-block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
-    .debt-badge-unknown { display: inline-block; background: #fef3c7; color: #b45309; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
     
     .table-select { padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; height: 32px; background: white; }
 
@@ -451,7 +450,7 @@
           <b style="font-size:13px; color:#991b1b; display:block; margin-bottom:6px;">💰 2. Kontrakt qarzdorligini yuklash (.xlsx)</b>
           <p style="font-size:11px; color:#475569; margin-top:0;">
             Ustunlar: <b>FISH | Kontrakt summasi | To'langan summa | Qarz</b><br>
-            <i>Qoidalar:</i> "-" yoki musbat son = qarz yo'q; Manfiy son ("- 16 000 000") = qarz; Topilmaganlar sariq rang bilan belgilanadi.
+            <i>Qoidalar:</i> "-" yoki musbat son = qarz yo'q; Manfiy son ("- 16 000 000") = qarz.
           </p>
           <div class="upload-box" onclick="document.getElementById('excel-contract-file').click()">
             <span style="font-size:24px;">💳</span><br>
@@ -506,9 +505,6 @@
     <div id="st-debt-banner" class="card" style="display:none; background:#fef2f2; border:1px solid #f87171; padding:12px 14px;">
       <b style="color:#991b1b; font-size:13px;">⚠️ Kontrakt bo'yicha qarzdorlik: </b>
       <span id="st-debt-amount" style="font-weight:bold; color:#dc2626; font-size:14px;">0 so'm</span>
-    </div>
-    <div id="st-debt-warning-banner" class="card" style="display:none; background:#fffbeb; border:1px solid #fde68a; padding:12px 14px;">
-      <b style="color:#b45309; font-size:12px;">⚠️ Kontrakt holatingiz aniqlashtirilmagan. Iltimos, kontrakt bo'limiga uchrashib holatingizni aniqlang!</b>
     </div>
 
     <div class="card">
@@ -595,11 +591,13 @@
       return n ? n : "1";
     }
 
+    // F.I.Sh. ni harflar xatosiga qaramay toza solishtirish uchun
     function normalizeFIO(str) {
       if (!str) return "";
       return String(str)
         .toUpperCase()
         .replace(/['`‘ʼʻ]/g, "")
+        .replace(/H/g, "X") // X va H xatolarini bir xillashtirish
         .replace(/\bO\b/g, "O")
         .replace(/\bQIZI\b/g, "QIZI")
         .replace(/\bOGLI\b/g, "OGLI")
@@ -802,15 +800,7 @@
         }
 
         const { data: contractData } = await supabaseClient.from('contracts').select('debt_amount').eq('student_id', id).maybeSingle();
-        
-        if (contractData && contractData.debt_amount !== null && contractData.debt_amount !== undefined) {
-          st.debt_amount = Number(contractData.debt_amount);
-          st.debt_status = 'known';
-        } else {
-          st.debt_amount = 0;
-          st.debt_status = 'unknown';
-        }
-        
+        st.debt_amount = (contractData && contractData.debt_amount) ? Number(contractData.debt_amount) : 0;
         currentStudent = st;
 
         localStorage.setItem("auth_role", "student");
@@ -837,19 +827,13 @@
       loadTeachersSearchList();
 
       var debtBox = document.getElementById("st-debt-banner");
-      var debtWarnBox = document.getElementById("st-debt-warning-banner");
       var debtVal = Number(st.debt_amount || 0);
 
-      if (st.debt_status === 'unknown') {
-        debtBox.style.display = "none";
-        debtWarnBox.style.display = "block";
-      } else if (debtVal > 0) {
+      if (debtVal > 0) {
         debtBox.style.display = "block";
-        debtWarnBox.style.display = "none";
         document.getElementById("st-debt-amount").innerText = debtVal.toLocaleString('uz-UZ') + " so'm";
       } else {
         debtBox.style.display = "none";
-        debtWarnBox.style.display = "none";
       }
 
       const { data: abs } = await supabaseClient.from('attendance').select('*').eq('student_id', st.id).order('attendance_date', { ascending: false });
@@ -1136,7 +1120,7 @@
       var debtCount = 0;
       var totalDebt = 0;
       studentsList.forEach(function(st) {
-        var d = (st.contracts && st.contracts[0] && st.contracts[0].debt_amount !== null) ? Number(st.contracts[0].debt_amount) : 0;
+        var d = (st.contracts && st.contracts[0] && st.contracts[0].debt_amount) ? Number(st.contracts[0].debt_amount) : 0;
         if (d > 0) { debtCount++; totalDebt += d; }
       });
 
@@ -1153,19 +1137,10 @@
       studentsList.forEach(function(st, idx) {
         var tr = document.createElement("tr");
         
-        var debtBadge = "";
-        var contractRecord = (st.contracts && st.contracts[0]) ? st.contracts[0] : null;
-
-        if (!contractRecord || contractRecord.debt_amount === null || contractRecord.debt_amount === undefined) {
-          debtBadge = "<span class='debt-badge-unknown' title='Iltimos, kontrakt bo'limiga uchrashib holatingizni aniqlang'>🟡 Kontrakt bo'limidan aniqlang</span>";
-        } else {
-          var debtVal = Number(contractRecord.debt_amount);
-          if (debtVal > 0) {
-            debtBadge = "<span class='debt-badge-danger'>🔴 " + (debtVal / 1000000).toFixed(1) + " mln</span>";
-          } else {
-            debtBadge = "<span class='debt-badge-ok'>🟢 To'langan</span>";
-          }
-        }
+        var debtVal = (st.contracts && st.contracts[0] && st.contracts[0].debt_amount) ? Number(st.contracts[0].debt_amount) : 0;
+        var debtBadge = debtVal > 0 
+          ? "<span class='debt-badge-danger'>🔴 " + (debtVal / 1000000).toFixed(1) + " mln</span>" 
+          : "<span class='debt-badge-ok'>🟢 To'langan</span>";
 
         var cells = '<td class="sticky-col-tr">' + (idx + 1) + '</td><td class="sticky-col-id" style="font-family:monospace; font-size:10px;">' + st.id + '</td>' +
           '<td class="student-cell sticky-col-name"><span style="font-weight:600;">' + st.fio + '</span>' + debtBadge + '</td>';
@@ -1533,7 +1508,7 @@
     }
 
     // =========================================================================
-    // KONTRAKT QARZDORLIKLARINI YUKLASH (DUBLIKATSIZ VA UNIQUE XATOSIZ)
+    // KONTRAKT QARZDORLIKLARINI YUKLASH (ANQIQ VA ISHONCHLI ALGORITM)
     // =========================================================================
     async function handleContractUpload(e) {
       var file = e.target.files[0];
@@ -1554,19 +1529,34 @@
             return;
           }
 
-          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Talabalar bazadan solishtirilmoqda...</span>";
+          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Talabalar bazadan olinmoqda...</span>";
 
-          const { data: allStudents } = await supabaseClient.from('students').select('id, fio');
-          var dbStudentsMap = [];
-          if (allStudents) {
-            allStudents.forEach(function(s) {
-              dbStudentsMap.push({
-                id: s.id,
-                rawFio: s.fio,
-                normFio: normalizeFIO(s.fio)
-              });
-            });
+          // Bazadagi barcha talabalarni olamiz
+          var allStudents = [];
+          var from = 0, step = 1000, hasMore = true;
+          while (hasMore) {
+            const { data: stBatch, error: bErr } = await supabaseClient
+              .from('students')
+              .select('id, fio')
+              .range(from, from + step - 1);
+            if (bErr || !stBatch || stBatch.length === 0) { hasMore = false; break; }
+            allStudents = allStudents.concat(stBatch);
+            if (stBatch.length < step) hasMore = false;
+            else from += step;
           }
+
+          var dbStudentsMap = [];
+          allStudents.forEach(function(s) {
+            var n = normalizeFIO(s.fio);
+            var parts = n.split(' ');
+            var short2 = parts.slice(0, 2).join(' '); // Faqat Familiya + Ism
+            dbStudentsMap.push({
+              id: s.id,
+              rawFio: s.fio,
+              normFio: n,
+              short2: short2
+            });
+          });
 
           var header = rows[0] || [];
           var fioCol = 1;
@@ -1578,8 +1568,7 @@
             if (colName.includes("QARZ")) qarzCol = c;
           }
 
-          // Dublikatlarni oldini olish uchun ID bo'yicha obyekt (Map) ishlatamiz
-          var uniqueContractMap = {};
+          var studentDebtMap = {}; // student_id -> qarz summasi
 
           for (var i = 1; i < rows.length; i++) {
             var r = rows[i];
@@ -1587,8 +1576,10 @@
 
             var excelFioRaw = String(r[fioCol]).trim();
             var excelFioNorm = normalizeFIO(excelFioRaw);
+            var excelShort2 = excelFioNorm.split(' ').slice(0, 2).join(' ');
             var qarzCellRaw = (r[qarzCol] !== undefined && r[qarzCol] !== null) ? String(r[qarzCol]).trim() : "-";
 
+            // Manfiy son bo'lsa haqiqiy qarz
             var debtAmount = 0;
             if (qarzCellRaw.includes("-") && /\d/.test(qarzCellRaw)) {
               debtAmount = Number(qarzCellRaw.replace(/[^0-9]/g, ''));
@@ -1596,55 +1587,50 @@
               debtAmount = 0;
             }
 
+            // Solishtirish: 1) To'liq mos kelishi, 2) Ichida bo'lishi, 3) Familiya+Ism mos kelishi
             var matched = dbStudentsMap.find(function(s) {
               return s.normFio === excelFioNorm || s.normFio.includes(excelFioNorm) || excelFioNorm.includes(s.normFio);
             });
 
+            if (!matched && excelShort2.length > 5) {
+              matched = dbStudentsMap.find(function(s) {
+                return s.short2 === excelShort2;
+              });
+            }
+
             if (matched) {
-              // Bitta talabaning oxirgi summasi yoziladi (takrorlanish bo'lmaydi)
-              uniqueContractMap[matched.id] = debtAmount;
+              studentDebtMap[matched.id] = debtAmount;
             }
           }
 
           var contractRecords = [];
           var matchedCount = 0;
-          var unknownCount = 0;
 
-          // Barcha talabalar uchun toza yozuvlar tuzamiz
-          dbStudentsMap.forEach(function(s) {
-            if (uniqueContractMap.hasOwnProperty(s.id)) {
-              contractRecords.push({
-                student_id: s.id,
-                debt_amount: uniqueContractMap[s.id]
-              });
-              matchedCount++;
-            } else {
-              // Topilmaganlar sariq belgilanishi uchun null qilinadi
-              contractRecords.push({
-                student_id: s.id,
-                debt_amount: null
-              });
-              unknownCount++;
-            }
-          });
+          // Faqat qarz aniqlangan yoki faylda chiqqan talabalarga yozamiz
+          for (var sId in studentDebtMap) {
+            contractRecords.push({
+              student_id: sId,
+              debt_amount: studentDebtMap[sId]
+            });
+            matchedCount++;
+          }
 
-          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Bazaga yangilanmoqda (" + matchedCount + " ta mos keldi)...</span>";
+          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Bazaga yozilmoqda (" + matchedCount + " ta mos keldi)...</span>";
 
-          // Eski yozuvlarni tozalab, barcha yagona yozuvlarni kiritish
+          // Eski qarzlarni tozalash
           await supabaseClient.from('contracts').delete().neq('student_id', '0');
 
-          var step = 500;
-          for (var b = 0; b < contractRecords.length; b += step) {
-            var batch = contractRecords.slice(b, b + step);
+          var insertStep = 500;
+          for (var b = 0; b < contractRecords.length; b += insertStep) {
+            var batch = contractRecords.slice(b, b + insertStep);
             const { error: insErr } = await supabaseClient.from('contracts').insert(batch);
             if (insErr) throw insErr;
           }
 
           statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Kontrakt qarzdorliklari muvaffaqiyatli saqlandi!<br>" +
-            "🟢 Aniqlangan talabalar: <b>" + matchedCount + " nafar</b><br>" +
-            "🟡 Topilmagan (kontrakt bo'limiga yuboriladiganlar): <b>" + unknownCount + " nafar</b></span>";
+            "🟢 Aniqlangan talabalar: <b>" + matchedCount + " nafar</b></span>";
           
-          alert("Kontrakt yangilandi!\n" + matchedCount + " nafar talabaning qarzdorligi muvaffaqiyatli kiritildi.");
+          alert("Kontrakt yangilandi!\n" + matchedCount + " nafar talabaning qarzdorlik summasi to'g'ri o'rnatildi.");
           if (currentGroup) loadGroupData();
         } catch(err) {
           statusDiv.innerHTML = "<span style='color:red;'>Xatolik: " + err.message + "</span>";
