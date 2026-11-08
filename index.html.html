@@ -1532,7 +1532,9 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // KONTRAKT QARZDORLIKLARINI YUKLASH (XATOSIZ BATCH INSERT)
+    // =========================================================================
+    // KONTRAKT QARZDORLIKLARINI YUKLASH (DUBLIKATSIZ VA UNIQUE XATOSIZ)
+    // =========================================================================
     async function handleContractUpload(e) {
       var file = e.target.files[0];
       if (!file) return;
@@ -1576,9 +1578,8 @@
             if (colName.includes("QARZ")) qarzCol = c;
           }
 
-          var contractRecords = [];
-          var matchedCount = 0;
-          var unknownCount = 0;
+          // Dublikatlarni oldini olish uchun ID bo'yicha obyekt (Map) ishlatamiz
+          var uniqueContractMap = {};
 
           for (var i = 1; i < rows.length; i++) {
             var r = rows[i];
@@ -1600,17 +1601,25 @@
             });
 
             if (matched) {
-              contractRecords.push({
-                student_id: matched.id,
-                debt_amount: debtAmount
-              });
-              matchedCount++;
+              // Bitta talabaning oxirgi summasi yoziladi (takrorlanish bo'lmaydi)
+              uniqueContractMap[matched.id] = debtAmount;
             }
           }
 
-          var uploadedIds = new Set(contractRecords.map(function(c) { return c.student_id; }));
+          var contractRecords = [];
+          var matchedCount = 0;
+          var unknownCount = 0;
+
+          // Barcha talabalar uchun toza yozuvlar tuzamiz
           dbStudentsMap.forEach(function(s) {
-            if (!uploadedIds.has(s.id)) {
+            if (uniqueContractMap.hasOwnProperty(s.id)) {
+              contractRecords.push({
+                student_id: s.id,
+                debt_amount: uniqueContractMap[s.id]
+              });
+              matchedCount++;
+            } else {
+              // Topilmaganlar sariq belgilanishi uchun null qilinadi
               contractRecords.push({
                 student_id: s.id,
                 debt_amount: null
@@ -1621,7 +1630,7 @@
 
           statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Bazaga yangilanmoqda (" + matchedCount + " ta mos keldi)...</span>";
 
-          // Xatolikka tushmaslik uchun: avval eski yozuvlarni tozalab, keyin toza kiritamiz
+          // Eski yozuvlarni tozalab, barcha yagona yozuvlarni kiritish
           await supabaseClient.from('contracts').delete().neq('student_id', '0');
 
           var step = 500;
