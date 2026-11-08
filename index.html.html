@@ -78,7 +78,7 @@
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 12px; }
     .login-box { background: white; padding: 22px 18px; border-radius: 8px; width: 100%; max-width: 360px; text-align: center; }
     .schedule-box { background: white; padding: 18px 14px; border-radius: 8px; width: 850px; max-width: 98%; max-height: 90vh; overflow-y: auto; }
-    .transfer-box { background: white; padding: 18px 20px; border-radius: 8px; width: 100%; max-width: 420px; }
+    .form-box { background: white; padding: 18px 20px; border-radius: 8px; width: 100%; max-width: 420px; }
     .input { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px; }
     .auth-tab { flex: 1; padding: 10px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: bold; font-size: 12px; color: #64748b; }
     .auth-tab.active { border-color: #2563eb; color: #2563eb; }
@@ -140,7 +140,7 @@
 
   <!-- 2. ADMIN TALABANI KO'CHIRISH MODALI -->
   <div id="transfer-modal" class="modal" style="display:none;">
-    <div class="transfer-box">
+    <div class="form-box">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <b style="font-size:14px; color:#0f2e5a;">🔄 Talabani boshqa guruhga ko'chirish</b>
         <button class="btn btn-danger" style="padding:2px 8px;" onclick="closeTransferModal()">✕</button>
@@ -171,7 +171,32 @@
     </div>
   </div>
 
-  <!-- 3. DARS JADVALI MODALI -->
+  <!-- 3. ADMIN GURUHGA YANGI TALABA QO'SHISH MODALI -->
+  <div id="add-student-modal" class="modal" style="display:none;">
+    <div class="form-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <b style="font-size:14px; color:#0f2e5a;">➕ Guruhga yangi talaba qo'shish</b>
+        <button class="btn btn-danger" style="padding:2px 8px;" onclick="closeAddStudentModal()">✕</button>
+      </div>
+      <div style="font-size:12px; margin-bottom:10px; color:#334155;">
+        Tanlangan guruh: <b id="add-st-group-label" style="color:#2563eb;">—</b>
+      </div>
+      <div style="margin-bottom:8px;">
+        <label style="font-weight:600; display:block; margin-bottom:2px;">1. HEMIS ID raqami:</label>
+        <input type="tel" id="add-st-id" class="input" placeholder="Masalan: 44226110..." maxlength="16">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-weight:600; display:block; margin-bottom:2px;">2. Talaba F.I.Sh. (Familiya Ism Otasining ismi):</label>
+        <input type="text" id="add-st-fio" class="input" placeholder="TO'LIQ ISMI...">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn btn-warning" onclick="closeAddStudentModal()">Bekor qilish</button>
+        <button id="add-st-btn" class="btn btn-success" onclick="confirmAddStudent()">💾 Talabani qo'shish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. DARS JADVALI MODALI -->
   <div id="schedule-modal" class="modal" style="display:none;">
     <div class="schedule-box">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -193,7 +218,7 @@
     </div>
   </div>
 
-  <!-- 4. ASOSIY EKRAN -->
+  <!-- 5. ASOSIY EKRAN -->
   <div id="app" style="display:none;">
     <div class="header">
       <div style="display:flex; align-items:center; gap:8px;">
@@ -250,6 +275,7 @@
         </div>
         
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button id="btn-open-add-student" class="btn btn-success" style="display:none;" onclick="openAddStudentModal()">➕ Yangi talaba qo'shish</button>
           <button class="btn btn-warning" onclick="openScheduleModal()">📅 Dars jadvali</button>
           <button class="btn btn-excel" onclick="exportFullGroupWeeklyReport()">📥 Excel</button>
           <button id="save-btn" class="btn btn-primary" onclick="saveAttendanceData()" disabled>Bazaga Saqlash</button>
@@ -424,11 +450,11 @@
       </div>
     </div>
 
-    <!-- 5-BO'LIM: ADMIN UCHUN EXCEL BOSHQARUVI (FAQAT DARS JADVALI) -->
+    <!-- 5-BO'LIM: ADMIN UCHUN EXCEL BOSHQARUVI (DARS JADVALI) -->
     <div id="view-admin-manage" style="display:none;">
       <div class="card">
         <h3 style="margin-top:0; color:#0f2e5a;">📁 Excel orqali bazani yangilash (Admin)</h3>
-        <p style="color:#64748b; font-size:12px;">Ko'p varaqli (1-kurs, 2-3-kurs, 1-2-kurs kechki ta'lim) murakkab dars jadvallarini avtomatik ajratib oladi.</p>
+        <p style="color:#64748b; font-size:12px;">Ko'p varaqli (1-kurs, 2-3-kurs, 1-2-kurs kechki ta'lim) dars jadvallarini avtomatik ajratib oladi.</p>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
@@ -569,6 +595,12 @@
       if (!c) return "1";
       var n = String(c).replace(/\D/g, '');
       return n ? n : "1";
+    }
+
+    // Guruh nomini har xil probellar va qavslarsiz toza formatga keltirish
+    function cleanGroupName(str) {
+      if (!str) return "";
+      return String(str).replace(/[\s\-_()]/g, "").toUpperCase();
     }
 
     window.onload = function() {
@@ -731,6 +763,7 @@
         if (data.role === 'admin') {
           document.getElementById("tab-teacher-feedback-btn").style.display = "inline-flex";
           document.getElementById("tab-admin-manage-btn").style.display = "inline-flex";
+          document.getElementById("btn-open-add-student").style.display = "inline-flex";
         }
         buildHeaders();
         loadAllGroupsPaginated();
@@ -814,17 +847,25 @@
       await loadGroupScheduleForStudent(st.group_name);
     }
 
+    // TALABA KABINETIDA DARS JADVALINI AQLLI QIDIRISH
     async function loadGroupScheduleForStudent(grp) {
       var sTbody = document.getElementById("st-schedule-tbody");
       sTbody.innerHTML = "";
 
-      var targetGroup = grp ? grp.trim().toUpperCase() : "";
+      var targetClean = cleanGroupName(grp);
 
-      const { data: dbSched } = await supabaseClient
+      const { data: allSched } = await supabaseClient
         .from('schedules')
         .select('*')
-        .eq('group_name', targetGroup)
         .order('schedule_date');
+
+      var dbSched = [];
+      if (allSched) {
+        dbSched = allSched.filter(function(s) {
+          var sGrpClean = cleanGroupName(s.group_name);
+          return sGrpClean === targetClean || sGrpClean.includes(targetClean) || targetClean.includes(sGrpClean);
+        });
+      }
 
       var todayStr = fmt(new Date());
 
@@ -1277,6 +1318,84 @@
       }
     }
 
+    // =========================================================================
+    // ADMIN GURUHGA YANGI TALABA QO'SHISH FUNKSIYALARI
+    // =========================================================================
+    function openAddStudentModal() {
+      if (!currentGroup) {
+        alert("Iltimos, avval guruhni tanlang!");
+        return;
+      }
+      document.getElementById("add-st-group-label").innerText = currentGroup;
+      document.getElementById("add-st-id").value = "";
+      document.getElementById("add-st-fio").value = "";
+      document.getElementById("add-student-modal").style.display = "flex";
+      document.getElementById("add-st-id").focus();
+    }
+
+    function closeAddStudentModal() {
+      document.getElementById("add-student-modal").style.display = "none";
+    }
+
+    async function confirmAddStudent() {
+      var hemisId = document.getElementById("add-st-id").value.replace(/[^0-9]/g, '').trim();
+      var fio = document.getElementById("add-st-fio").value.trim().toUpperCase();
+      var btn = document.getElementById("add-st-btn");
+
+      if (!hemisId) {
+        alert("HEMIS ID raqamini kiriting!");
+        document.getElementById("add-st-id").focus();
+        return;
+      }
+
+      if (!fio) {
+        alert("Talaba F.I.Sh. (Familiya Ism Otasining ismi)ni kiriting!");
+        document.getElementById("add-st-fio").focus();
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "Saqlanmoqda...";
+
+      try {
+        var grpInfo = allGroupsMeta.find(function(g) { return g.group_name === currentGroup; });
+        var targetFaculty = grpInfo ? grpInfo.faculty : currentFaculty;
+        var targetCourse = grpInfo ? (grpInfo.course + "-kurs") : "1-kurs";
+        var targetStudyType = grpInfo ? grpInfo.study_type : "kunduzgi";
+
+        const { error: insErr } = await supabaseClient.from('students').insert([{
+          id: hemisId,
+          fio: fio,
+          group_name: currentGroup,
+          faculty: targetFaculty,
+          course: targetCourse,
+          study_type: targetStudyType
+        }]);
+
+        if (insErr) {
+          if (insErr.code === '23505') {
+            throw new Error("Ushbu HEMIS ID (" + hemisId + ") allaqachon boshqa talabaga biriktirilgan!");
+          }
+          throw insErr;
+        }
+
+        btn.disabled = false;
+        btn.innerText = "💾 Talabani qo'shish";
+        closeAddStudentModal();
+
+        alert("Talaba muvaffaqiyatli qo'shildi!\n" + fio + " (" + currentGroup + ")");
+        await loadAllGroupsPaginated();
+        await loadGroupData();
+      } catch(err) {
+        btn.disabled = false;
+        btn.innerText = "💾 Talabani qo'shish";
+        alert("Xatolik: " + err.message);
+      }
+    }
+
+    // =========================================================================
+    // DARS JADVALI KO'RISH (AQLLI MATRITSA QIDIRUVI)
+    // =========================================================================
     async function openScheduleModal() {
       if (!currentGroup) { alert("Avval guruhni tanlang!"); return; }
       document.getElementById("schedule-modal-title").innerText = currentGroup + " guruhi dars jadvali";
@@ -1284,13 +1403,20 @@
       tbody.innerHTML = "<tr><td colspan='5' style='padding:12px;'>Jadval yuklanmoqda...</td></tr>";
       document.getElementById("schedule-modal").style.display = "flex";
 
-      var targetGroup = currentGroup.trim().toUpperCase();
+      var targetClean = cleanGroupName(currentGroup);
 
-      const { data: dbSched } = await supabaseClient
+      const { data: allSched } = await supabaseClient
         .from('schedules')
         .select('*')
-        .eq('group_name', targetGroup)
         .order('schedule_date');
+
+      var dbSched = [];
+      if (allSched) {
+        dbSched = allSched.filter(function(s) {
+          var sGrpClean = cleanGroupName(s.group_name);
+          return sGrpClean === targetClean || sGrpClean.includes(targetClean) || targetClean.includes(sGrpClean);
+        });
+      }
 
       tbody.innerHTML = "";
       var todayStr = fmt(new Date());
@@ -1337,6 +1463,7 @@
       return s;
     }
 
+    // EXCEL MATRITSADAN GURUHLARNI TO'LIQ VA ANQIQ AJRATISH
     async function handleScheduleUpload(e) {
       var file = e.target.files[0];
       if (!file) return;
@@ -1359,7 +1486,7 @@
             var groupRowIndex = -1;
             for (var r = 0; r < Math.min(rows.length, 5); r++) {
               if (rows[r] && rows[r].some(function(cell) {
-                return cell && /filologiya|iqtisodiyot|pedagogika|s[a-z]{2,}\d+/i.test(String(cell));
+                return cell && /[A-Z]{2,}\d{3}/i.test(String(cell));
               })) {
                 groupRowIndex = r;
                 break;
@@ -1374,8 +1501,9 @@
               var grpText = headerRow[c];
               if (grpText) {
                 var cleanGrp = String(grpText).trim();
-                var firstToken = cleanGrp.split(/\s+/)[0].toUpperCase();
-                var grpName = /^[A-Z0-9_-]+$/.test(firstToken) ? firstToken : cleanGrp;
+                // Guruh kodini ajratib olish (masalan SJXIMK602, SKF602...)
+                var matchCode = cleanGrp.match(/[A-Z0-9_-]{5,12}/i);
+                var grpName = matchCode ? matchCode[0].toUpperCase() : cleanGrp.split(/\s+/)[0].toUpperCase();
 
                 groupCols.push({
                   group_name: grpName,
