@@ -49,7 +49,6 @@
     tbody tr:nth-child(even) { background-color: #f8fafc; }
     tbody tr:hover { background-color: #f1f5f9; }
     
-    /* TELEFONDA TALABA ISMINI QOTIRISH (STICKY FREEZE) */
     .sticky-col-tr { position: sticky; left: 0; z-index: 5; background: #ffffff; border-left: 1px solid #cbd5e1; }
     .sticky-col-id { position: sticky; left: 32px; z-index: 5; background: #ffffff; }
     .sticky-col-name { position: sticky; left: 122px; z-index: 5; background: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.06); }
@@ -83,7 +82,7 @@
     .auth-tab { flex: 1; padding: 10px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: bold; font-size: 12px; color: #64748b; }
     .auth-tab.active { border-color: #2563eb; color: #2563eb; }
 
-    .schedule-table th { background: #005953; color: white; padding: 8px; }
+    .schedule-table th { background: #005953; color: white; padding: 8px; position: sticky; top: 0; z-index: 2; }
     .schedule-table td { padding: 8px 6px; }
     .schedule-room { color: #008779; font-weight: bold; font-size: 12px; }
     .tag-today { background: #059669; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: 6px; font-weight: bold; }
@@ -206,11 +205,11 @@
       <table class="schedule-table">
         <thead>
           <tr>
-            <th style="width:160px;">Hafta kuni</th>
-            <th style="width:60px;">Para</th>
-            <th style="width:90px;">Vaqti</th>
+            <th style="width:130px;">Hafta kuni</th>
+            <th style="width:50px;">Para</th>
+            <th style="width:85px;">Vaqti</th>
             <th style="text-align:left; padding-left:8px;">Fan nomi va O'qituvchi</th>
-            <th style="width:80px;">Xona</th>
+            <th style="width:75px;">Xona</th>
           </tr>
         </thead>
         <tbody id="schedule-tbody"></tbody>
@@ -450,18 +449,18 @@
       </div>
     </div>
 
-    <!-- 5-BO'LIM: ADMIN UCHUN EXCEL BOSHQARUVI (DARS JADVALI) -->
+    <!-- 5-BO'LIM: ADMIN UCHUN EXCEL BOSHQARUVI -->
     <div id="view-admin-manage" style="display:none;">
       <div class="card">
-        <h3 style="margin-top:0; color:#0f2e5a;">📁 Excel orqali bazani yangilash (Admin)</h3>
-        <p style="color:#64748b; font-size:12px;">Ko'p varaqli (1-kurs, 2-3-kurs, 1-2-kurs kechki ta'lim) dars jadvallarini avtomatik ajratib oladi.</p>
+        <h3 style="margin-top:0; color:#0f2e5a;">📁 Excel orqali dars jadvalini yangilash (Admin)</h3>
+        <p style="color:#64748b; font-size:12px;">Barcha listlardagi (1-kurs, 2-3-kurs, kechki ta'lim) dars jadvallarini avtomatik ajratib, to'liq 5 kunlik jadvallarni saqlaydi.</p>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
         <div class="card">
           <b style="font-size:13px; color:#005953; display:block; margin-bottom:6px;">📅 Dars jadvalini yuklash (.xlsx)</b>
           <p style="font-size:11px; color:#475569; margin-top:0;">
-            Ko'p varaqli jadval faylini tanlang. Tizim barcha guruhlar, kunlar, paralar va xonalarni bazaga to'liq saqlaydi.
+            Ko'p varaqli Excel jadval faylingizni tanlang. Tizim barcha 5 kunlik darslarni to'liq bazaga yozadi.
           </p>
           <div class="upload-box" onclick="document.getElementById('excel-schedule-file').click()">
             <span style="font-size:24px;">📊</span><br>
@@ -526,11 +525,11 @@
       <table class="schedule-table">
         <thead>
           <tr>
-            <th style="width:140px;">Kuni</th>
+            <th style="width:130px;">Kuni</th>
             <th style="width:50px;">Para</th>
             <th style="width:85px;">Vaqti</th>
             <th style="text-align:left; padding-left:8px;">Fan nomi</th>
-            <th style="width:70px;">Xona</th>
+            <th style="width:75px;">Xona</th>
           </tr>
         </thead>
         <tbody id="st-schedule-tbody"></tbody>
@@ -597,7 +596,6 @@
       return n ? n : "1";
     }
 
-    // Guruh nomini har xil probellar va qavslarsiz toza formatga keltirish
     function cleanGroupName(str) {
       if (!str) return "";
       return String(str).replace(/[\s\-_()]/g, "").toUpperCase();
@@ -847,25 +845,39 @@
       await loadGroupScheduleForStudent(st.group_name);
     }
 
-    // TALABA KABINETIDA DARS JADVALINI AQLLI QIDIRISH
+    // TALABA KABINETIDA DARS JADVALINI TO'LIQ VA KUCHAYTIRILGAN QIDIRISH
     async function loadGroupScheduleForStudent(grp) {
       var sTbody = document.getElementById("st-schedule-tbody");
       sTbody.innerHTML = "";
 
       var targetClean = cleanGroupName(grp);
 
-      const { data: allSched } = await supabaseClient
-        .from('schedules')
-        .select('*')
-        .order('schedule_date');
-
-      var dbSched = [];
-      if (allSched) {
-        dbSched = allSched.filter(function(s) {
-          var sGrpClean = cleanGroupName(s.group_name);
-          return sGrpClean === targetClean || sGrpClean.includes(targetClean) || targetClean.includes(sGrpClean);
-        });
+      // Barcha jadval qatorlarini to'liq sahifalab (paginated) olish
+      var allSched = [];
+      var from = 0, step = 1000, hasMore = true;
+      while (hasMore) {
+        const { data: bData, error: bErr } = await supabaseClient
+          .from('schedules')
+          .select('*')
+          .range(from, from + step - 1);
+        if (bErr || !bData || bData.length === 0) { hasMore = false; break; }
+        allSched = allSched.concat(bData);
+        if (bData.length < step) hasMore = false;
+        else from += step;
       }
+
+      var dbSched = allSched.filter(function(s) {
+        var sGrpClean = cleanGroupName(s.group_name);
+        return sGrpClean === targetClean || sGrpClean.includes(targetClean) || targetClean.includes(sGrpClean);
+      });
+
+      // Darslarni sana va para bo'yicha to'g'ri saralash (1, 2, 3 tartibida)
+      dbSched.sort(function(a, b) {
+        if (a.schedule_date === b.schedule_date) {
+          return Number(a.para || 1) - Number(b.para || 1);
+        }
+        return String(a.schedule_date).localeCompare(String(b.schedule_date));
+      });
 
       var todayStr = fmt(new Date());
 
@@ -1318,9 +1330,6 @@
       }
     }
 
-    // =========================================================================
-    // ADMIN GURUHGA YANGI TALABA QO'SHISH FUNKSIYALARI
-    // =========================================================================
     function openAddStudentModal() {
       if (!currentGroup) {
         alert("Iltimos, avval guruhni tanlang!");
@@ -1394,29 +1403,43 @@
     }
 
     // =========================================================================
-    // DARS JADVALI KO'RISH (AQLLI MATRITSA QIDIRUVI)
+    // DARS JADVALI KO'RISH (CHEKSIZ PAGINATED VA TO'LIQ 5 KUNLIK)
     // =========================================================================
     async function openScheduleModal() {
       if (!currentGroup) { alert("Avval guruhni tanlang!"); return; }
       document.getElementById("schedule-modal-title").innerText = currentGroup + " guruhi dars jadvali";
       var tbody = document.getElementById("schedule-tbody");
-      tbody.innerHTML = "<tr><td colspan='5' style='padding:12px;'>Jadval yuklanmoqda...</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='5' style='padding:12px;'>Jadval to'liq yuklanmoqda...</td></tr>";
       document.getElementById("schedule-modal").style.display = "flex";
 
       var targetClean = cleanGroupName(currentGroup);
 
-      const { data: allSched } = await supabaseClient
-        .from('schedules')
-        .select('*')
-        .order('schedule_date');
-
-      var dbSched = [];
-      if (allSched) {
-        dbSched = allSched.filter(function(s) {
-          var sGrpClean = cleanGroupName(s.group_name);
-          return sGrpClean === targetClean || sGrpClean.includes(targetClean) || targetClean.includes(sGrpClean);
-        });
+      // Baza limitini (1000) aylanib o'tib, barcha jadvallarni to'liq tortib olish
+      var allSched = [];
+      var from = 0, step = 1000, hasMore = true;
+      while (hasMore) {
+        const { data: bData, error: bErr } = await supabaseClient
+          .from('schedules')
+          .select('*')
+          .range(from, from + step - 1);
+        if (bErr || !bData || bData.length === 0) { hasMore = false; break; }
+        allSched = allSched.concat(bData);
+        if (bData.length < step) hasMore = false;
+        else from += step;
       }
+
+      var dbSched = allSched.filter(function(s) {
+        var sGrpClean = cleanGroupName(s.group_name);
+        return sGrpClean === targetClean || sGrpClean.includes(targetClean) || targetClean.includes(sGrpClean);
+      });
+
+      // Darslarni sana va para bo'yicha to'g'ri (1, 2, 3 tartibida) saralash
+      dbSched.sort(function(a, b) {
+        if (a.schedule_date === b.schedule_date) {
+          return Number(a.para || 1) - Number(b.para || 1);
+        }
+        return String(a.schedule_date).localeCompare(String(b.schedule_date));
+      });
 
       tbody.innerHTML = "";
       var todayStr = fmt(new Date());
@@ -1446,7 +1469,7 @@
     }
 
     function parseExcelDate(val) {
-      if (!val) return fmt(new Date());
+      if (!val) return null;
       if (typeof val === 'number') {
         var d = new Date(Math.round((val - 25569) * 86400 * 1000));
         return fmt(d);
@@ -1463,7 +1486,7 @@
       return s;
     }
 
-    // EXCEL MATRITSADAN GURUHLARNI TO'LIQ VA ANQIQ AJRATISH
+    // EXCEL JADVALINI MERGED YACHEYKALARNI ESLAB QOLGAN HOLDA TO'LIQ 5 KUNNI O'QISH
     async function handleScheduleUpload(e) {
       var file = e.target.files[0];
       if (!file) return;
@@ -1483,8 +1506,9 @@
 
             if (!rows || rows.length < 3) return;
 
+            // Guruhlar qatorini topish (odatda 0- yoki 1-qator)
             var groupRowIndex = -1;
-            for (var r = 0; r < Math.min(rows.length, 5); r++) {
+            for (var r = 0; r < Math.min(rows.length, 6); r++) {
               if (rows[r] && rows[r].some(function(cell) {
                 return cell && /[A-Z]{2,}\d{3}/i.test(String(cell));
               })) {
@@ -1501,7 +1525,6 @@
               var grpText = headerRow[c];
               if (grpText) {
                 var cleanGrp = String(grpText).trim();
-                // Guruh kodini ajratib olish (masalan SJXIMK602, SKF602...)
                 var matchCode = cleanGrp.match(/[A-Z0-9_-]{5,12}/i);
                 var grpName = matchCode ? matchCode[0].toUpperCase() : cleanGrp.split(/\s+/)[0].toUpperCase();
 
@@ -1513,22 +1536,27 @@
               }
             }
 
-            var curDayName = "Dushanba";
-            var curDate = fmt(new Date());
+            // Merged yacheykalar uchun oxirgi kun va sanani doim eslab qolish
+            var lastDayName = "Dushanba";
+            var lastDate = fmt(new Date());
 
             for (var rIdx = groupRowIndex + 1; rIdx < rows.length; rIdx++) {
               var row = rows[rIdx];
               if (!row || row.length === 0) continue;
 
+              // Kun nomi o'zgarsa yangilash, bo'sh bo'lsa avvalgisini ushlab turish
               if (row[0] && String(row[0]).trim()) {
-                curDayName = String(row[0]).trim();
+                lastDayName = String(row[0]).trim();
               }
 
-              if (row[1]) {
-                curDate = parseExcelDate(row[1]);
+              // Sana o'zgarsa yangilash, bo'sh bo'lsa avvalgisini ushlab turish
+              var parsedD = parseExcelDate(row[1]);
+              if (parsedD) {
+                lastDate = parsedD;
               }
 
-              var paraNum = Number(String(row[2] || "").replace(/\D/g, '') || 1);
+              var paraRaw = String(row[2] || "").replace(/\D/g, '');
+              var paraNum = Number(paraRaw) || 1;
               var timeSlot = row[3] ? String(row[3]).trim() : "8:30–9:50";
 
               groupCols.forEach(function(gInfo) {
@@ -1538,8 +1566,8 @@
                 if (subj && subj !== "—" && subj !== "-") {
                   allScheduleRecords.push({
                     group_name: gInfo.group_name,
-                    schedule_date: curDate,
-                    day_name: curDayName,
+                    schedule_date: lastDate,
+                    day_name: lastDayName,
                     para: paraNum,
                     time_slot: timeSlot,
                     subject: subj,
@@ -1557,6 +1585,7 @@
 
           statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ " + allScheduleRecords.length + " ta dars Supabase bazasiga saqlanmoqda...</span>";
 
+          // Eski jadvalni tozalab, barchasini boshidan yozish
           await supabaseClient.from('schedules').delete().neq('id', 0);
 
           var step = 500;
@@ -1566,8 +1595,8 @@
             if (insErr) throw insErr;
           }
 
-          statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Dars jadvali barcha listlar bo'yicha to'liq yuklandi (" + allScheduleRecords.length + " ta mashg'ulot)!</span>";
-          alert("Dars jadvali bazaga to'liq muvaffaqiyatli saqlandi!");
+          statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Dars jadvali barcha listlar bo'yicha to'liq 5 kunlik yuklandi (" + allScheduleRecords.length + " ta mashg'ulot)!</span>";
+          alert("Dars jadvali to'liq va muvaffaqiyatli saqlandi!");
         } catch(err) {
           statusDiv.innerHTML = "<span style='color:red;'>Xatolik: " + err.message + "</span>";
         }
