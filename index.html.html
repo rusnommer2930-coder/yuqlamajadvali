@@ -431,7 +431,7 @@
     <div id="view-admin-manage" style="display:none;">
       <div class="card">
         <h3 style="margin-top:0; color:#0f2e5a;">📁 Excel orqali bazani yangilash (Admin)</h3>
-        <p style="color:#64748b; font-size:12px;">Bu bo'lim orqali dars jadvali va talabalar kontrakt qarzdorliklarini to'g'ridan-to'g'ri .xlsx fayl orqali yuklaysiz.</p>
+        <p style="color:#64748b; font-size:12px;">Rasmdagi kabi ko'p varaqli (1-kurs, 2-3-kurs, 1-2-kurs kechki ta'lim) murakkab dars jadvallarini avtomatik ajratib oladi.</p>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
@@ -439,7 +439,7 @@
         <div class="card">
           <b style="font-size:13px; color:#005953; display:block; margin-bottom:6px;">📅 1. Dars jadvalini yuklash (.xlsx)</b>
           <p style="font-size:11px; color:#475569; margin-top:0;">
-            Excel fayl ustunlari tartibi: <b>Guruh | Sana (YYYY-MM-DD) | Hafta kuni | Para (1,2,3) | Vaqti | Fan va o'qituvchi | Xona</b>
+            Rasmdagi jadvalingizni to'g'ridan-to'g'ri yuklang. Tizim barcha listlardagi guruhlar, sanalar, paralar, fanlar va xonalarni avtomatik taniydi.
           </p>
           <div class="upload-box" onclick="document.getElementById('excel-schedule-file').click()">
             <span style="font-size:24px;">📊</span><br>
@@ -453,8 +453,8 @@
         <div class="card">
           <b style="font-size:13px; color:#991b1b; display:block; margin-bottom:6px;">💰 2. Kontrakt qarzdorligini yuklash (.xlsx)</b>
           <p style="font-size:11px; color:#475569; margin-top:0;">
-            Excel fayl ustunlari: <b>HEMIS ID (yoki F.I.Sh.) | Qarzdorlik summasi (so'mda)</b><br>
-            Tizim avtomatik ravishda mos talabalarni topib qarzlarini yangilaydi.
+            Ustunlar: <b>HEMIS ID (yoki F.I.Sh.) | Qarzdorlik summasi</b><br>
+            Tizim avtomatik ravishda mos talabalarni topib, qarzlarini yangilaydi.
           </p>
           <div class="upload-box" onclick="document.getElementById('excel-contract-file').click()">
             <span style="font-size:24px;">💳</span><br>
@@ -578,7 +578,7 @@
     let selectedStudyType = "Barchasi";
     let selectedFacultyFilter = "Barchasi";
     let selectedCourseFilter = "Barchasi";
-    let selectedDayIndex = "all"; // Telefon uchun kun filtri: 'all', 0, 1, 2, 3, 4
+    let selectedDayIndex = "all";
 
     let curMonday = getMonday(new Date());
     let weekDates = [];
@@ -588,8 +588,6 @@
     let monitoringRows = [];
     let feedbackRows = [];
     let transferringStudent = null;
-
-    let dynamicMasterSchedule = [];
 
     function cleanCourseNumber(c) {
       if (!c) return "1";
@@ -853,24 +851,25 @@
     }
 
     async function loadGroupScheduleForStudent(grp) {
+      var sTbody = document.getElementById("st-schedule-tbody");
+      sTbody.innerHTML = "";
+
+      var targetGroup = grp ? grp.trim().toUpperCase() : "";
+
       const { data: dbSched } = await supabaseClient
         .from('schedules')
         .select('*')
-        .eq('group_name', grp)
+        .eq('group_name', targetGroup)
         .order('schedule_date');
 
-      var sTbody = document.getElementById("st-schedule-tbody");
-      sTbody.innerHTML = "";
       var todayStr = fmt(new Date());
 
-      var list = (dbSched && dbSched.length > 0) ? dbSched : dynamicMasterSchedule;
-
-      if (!list || list.length === 0) {
+      if (!dbSched || dbSched.length === 0) {
         sTbody.innerHTML = "<tr><td colspan='5' style='padding:12px; color:#64748b;'>Dars jadvali hali yuklanmagan</td></tr>";
         return;
       }
 
-      list.forEach(function(item) {
+      dbSched.forEach(function(item) {
         var tr = document.createElement("tr");
         var isToday = (item.schedule_date || item.date) === todayStr;
         var dayBadge = isToday ? '<span class="tag-today">Bugun</span>' : '';
@@ -1334,22 +1333,23 @@
       tbody.innerHTML = "<tr><td colspan='5' style='padding:12px;'>Jadval yuklanmoqda...</td></tr>";
       document.getElementById("schedule-modal").style.display = "flex";
 
+      var targetGroup = currentGroup.trim().toUpperCase();
+
       const { data: dbSched } = await supabaseClient
         .from('schedules')
         .select('*')
-        .eq('group_name', currentGroup)
+        .eq('group_name', targetGroup)
         .order('schedule_date');
 
       tbody.innerHTML = "";
-      var list = (dbSched && dbSched.length > 0) ? dbSched : dynamicMasterSchedule;
       var todayStr = fmt(new Date());
 
-      if (!list || list.length === 0) {
+      if (!dbSched || dbSched.length === 0) {
         tbody.innerHTML = "<tr><td colspan='5' style='padding:15px; color:#64748b;'>Ushbu guruh uchun dars jadvali topilmadi. Admin .xlsx orqali jadval yuklashi mumkin.</td></tr>";
         return;
       }
 
-      list.forEach(function(item) {
+      dbSched.forEach(function(item) {
         var tr = document.createElement("tr");
         var isToday = (item.schedule_date || item.date) === todayStr;
         var dayBadge = isToday ? '<span class="tag-today">Bugun</span>' : '';
@@ -1369,50 +1369,129 @@
     }
 
     // =========================================================================
-    // EXCEL ORQALI DARS JADVALINI VA KONTRAKTNI YUKLASH FUNKSIYALARI
+    // EXCEL DARS JADVALINI MATRITSA KO'RINISHIDA O'QISH VA YUKLASH (RASMGA MOS)
     // =========================================================================
+    function parseExcelDate(val) {
+      if (!val) return fmt(new Date());
+      if (typeof val === 'number') {
+        var d = new Date(Math.round((val - 25569) * 86400 * 1000));
+        return fmt(d);
+      }
+      var s = String(val).trim();
+      var parts = s.split(/[\.\-\/]/);
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          return parts[2] + "-" + String(parts[1]).padStart(2, '0') + "-" + String(parts[0]).padStart(2, '0');
+        } else if (parts[0].length === 4) {
+          return parts[0] + "-" + String(parts[1]).padStart(2, '0') + "-" + String(parts[2]).padStart(2, '0');
+        }
+      }
+      return s;
+    }
+
     async function handleScheduleUpload(e) {
       var file = e.target.files[0];
       if (!file) return;
       var statusDiv = document.getElementById("schedule-upload-status");
-      statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Fayl o'qilmoqda...</span>";
+      statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Fayldagi barcha varaqlar o'qilmoqda...</span>";
 
       var reader = new FileReader();
       reader.onload = async function(ev) {
         try {
           var data = new Uint8Array(ev.target.result);
           var workbook = XLSX.read(data, { type: 'array' });
-          var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          var rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          var allScheduleRecords = [];
 
-          if (rows.length < 2) {
-            statusDiv.innerHTML = "<span style='color:red;'>Faylda ma'lumot topilmadi!</span>";
+          workbook.SheetNames.forEach(function(sheetName) {
+            var sheet = workbook.Sheets[sheetName];
+            var rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+            if (!rows || rows.length < 3) return;
+
+            var groupRowIndex = -1;
+            for (var r = 0; r < Math.min(rows.length, 5); r++) {
+              if (rows[r] && rows[r].some(function(cell) {
+                return cell && /filologiya|iqtisodiyot|pedagogika|s[a-z]{2,}\d+/i.test(String(cell));
+              })) {
+                groupRowIndex = r;
+                break;
+              }
+            }
+
+            if (groupRowIndex === -1) groupRowIndex = 0;
+            var headerRow = rows[groupRowIndex] || [];
+
+            var groupCols = [];
+            for (var c = 4; c < headerRow.length; c += 2) {
+              var grpText = headerRow[c];
+              if (grpText) {
+                var cleanGrp = String(grpText).trim();
+                var firstToken = cleanGrp.split(/\s+/)[0].toUpperCase();
+                var grpName = /^[A-Z0-9_-]+$/.test(firstToken) ? firstToken : cleanGrp;
+
+                groupCols.push({
+                  group_name: grpName,
+                  subjCol: c,
+                  roomCol: c + 1
+                });
+              }
+            }
+
+            var curDayName = "Dushanba";
+            var curDate = fmt(new Date());
+
+            for (var rIdx = groupRowIndex + 1; rIdx < rows.length; rIdx++) {
+              var row = rows[rIdx];
+              if (!row || row.length === 0) continue;
+
+              if (row[0] && String(row[0]).trim()) {
+                curDayName = String(row[0]).trim();
+              }
+
+              if (row[1]) {
+                curDate = parseExcelDate(row[1]);
+              }
+
+              var paraNum = Number(String(row[2] || "").replace(/\D/g, '') || 1);
+              var timeSlot = row[3] ? String(row[3]).trim() : "8:30–9:50";
+
+              groupCols.forEach(function(gInfo) {
+                var subj = row[gInfo.subjCol] ? String(row[gInfo.subjCol]).trim() : "";
+                var room = row[gInfo.roomCol] ? String(row[gInfo.roomCol]).trim() : "";
+
+                if (subj && subj !== "—" && subj !== "-") {
+                  allScheduleRecords.push({
+                    group_name: gInfo.group_name,
+                    schedule_date: curDate,
+                    day_name: curDayName,
+                    para: paraNum,
+                    time_slot: timeSlot,
+                    subject: subj,
+                    room: room || "Xona yo'q"
+                  });
+                }
+              });
+            }
+          });
+
+          if (allScheduleRecords.length === 0) {
+            statusDiv.innerHTML = "<span style='color:red;'>Dars jadvali formatini aniqlab bo'lmadi!</span>";
             return;
           }
 
-          var scheduleRecords = [];
-          for (var i = 1; i < rows.length; i++) {
-            var r = rows[i];
-            if (!r || r.length === 0 || !r[0]) continue;
+          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ " + allScheduleRecords.length + " ta dars Supabase bazasiga saqlanmoqda...</span>";
 
-            scheduleRecords.push({
-              group_name: String(r[0]).trim().toUpperCase(),
-              schedule_date: r[1] ? String(r[1]).trim() : fmt(new Date()),
-              day_name: r[2] ? String(r[2]).trim() : "Dush",
-              para: Number(r[3] || 1),
-              time_slot: r[4] ? String(r[4]).trim() : "8:30–9:50",
-              subject: r[5] ? String(r[5]).trim() : "Fan",
-              room: r[6] ? String(r[6]).trim() : "101"
-            });
+          await supabaseClient.from('schedules').delete().neq('id', 0);
+
+          var step = 500;
+          for (var i = 0; i < allScheduleRecords.length; i += step) {
+            var batch = allScheduleRecords.slice(i, i + step);
+            const { error: insErr } = await supabaseClient.from('schedules').insert(batch);
+            if (insErr) throw insErr;
           }
 
-          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Bazaga yozilmoqda (" + scheduleRecords.length + " ta qator)...</span>";
-
-          const { error } = await supabaseClient.from('schedules').insert(scheduleRecords);
-          if (error) throw error;
-
-          statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Dars jadvali muvaffaqiyatli yuklandi (" + scheduleRecords.length + " ta)!</span>";
-          alert("Dars jadvali bazaga saqlandi!");
+          statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Dars jadvali barcha listlar bo'yicha to'liq yuklandi (" + allScheduleRecords.length + " ta mashg'ulot)!</span>";
+          alert("Dars jadvali bazaga to'liq muvaffaqiyatli saqlandi!");
         } catch(err) {
           statusDiv.innerHTML = "<span style='color:red;'>Xatolik: " + err.message + "</span>";
         }
