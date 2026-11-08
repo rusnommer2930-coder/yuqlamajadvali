@@ -42,19 +42,27 @@
     
     .stat-bar { display: flex; align-items: center; gap: 12px; font-size: 12px; background: #ffffff; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin: 8px auto; max-width: 99%; font-weight: 500; flex-wrap: wrap; }
     
-    table { width: 100%; border-collapse: collapse; font-size: 11px; background: white; }
-    th, td { border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center; vertical-align: middle; }
-    th { background: #0f2e5a; color: white; font-weight: 600; font-size: 11px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; background: white; }
+    th, td { border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; padding: 6px 4px; text-align: center; vertical-align: middle; }
+    th { background: #0f2e5a; color: white; font-weight: 600; font-size: 11px; position: sticky; top: 0; z-index: 10; border-top: 1px solid #cbd5e1; }
     .sub-th { background: #1e4b87; color: white; font-size: 10px; padding: 3px 0; }
     tbody tr:nth-child(even) { background-color: #f8fafc; }
     tbody tr:hover { background-color: #f1f5f9; }
     
+    /* TELEFONDA TALABA ISMINI QOTIRISH (STICKY FREEZE) */
+    .sticky-col-tr { position: sticky; left: 0; z-index: 5; background: #ffffff; border-left: 1px solid #cbd5e1; }
+    .sticky-col-id { position: sticky; left: 32px; z-index: 5; background: #ffffff; }
+    .sticky-col-name { position: sticky; left: 122px; z-index: 5; background: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.06); }
+    th.sticky-col-tr { z-index: 15; background: #0f2e5a; }
+    th.sticky-col-id { z-index: 15; background: #0f2e5a; }
+    th.sticky-col-name { z-index: 15; background: #0f2e5a; }
+
     .cell-btn { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; cursor: pointer; font-weight: bold; font-size: 11px; margin: 0 auto; display: inline-flex; align-items: center; justify-content: center; }
     .cell-btn.absent { background: #fee2e2; color: #dc2626; border-color: #f87171; }
     .cell-btn.late { background: #fef08a; color: #854d0e; border-color: #facc15; }
     .cell-btn.locked { cursor: not-allowed; opacity: 0.85; }
     
-    .student-cell { text-align: left; padding-left: 8px; white-space: nowrap; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+    .student-cell { text-align: left; padding-left: 8px; white-space: nowrap; max-width: 220px; min-width: 170px; overflow: hidden; text-overflow: ellipsis; }
     .debt-badge-danger { display: inline-block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
     .debt-badge-ok { display: inline-block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
     
@@ -100,6 +108,9 @@
     .course-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px; }
     .course-stat-card { background: #ffffff; border: 1px solid #bfdbfe; border-top: 4px solid #2563eb; border-radius: 8px; padding: 10px 14px; box-shadow: 0 2px 4px rgba(37,99,235,0.06); }
     .course-stat-card.total-card { border-top-color: #059669; border-color: #bbf7d0; background: #f0fdf4; }
+
+    .upload-box { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 18px; text-align: center; background: #f8fafc; cursor: pointer; transition: 0.2s; }
+    .upload-box:hover { border-color: #2563eb; background: #eff6ff; }
   </style>
 </head>
 <body>
@@ -129,7 +140,7 @@
     </div>
   </div>
 
-  <!-- 2. ADMIN UCHUN TALABANI KO'CHIRISH MODALI -->
+  <!-- 2. ADMIN TALABANI KO'CHIRISH MODALI -->
   <div id="transfer-modal" class="modal" style="display:none;">
     <div class="transfer-box">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -184,7 +195,7 @@
     </div>
   </div>
 
-  <!-- 4. DEKANAT VA ADMIN ASOSIY EKRANI -->
+  <!-- 4. ASOSIY EKRAN -->
   <div id="app" style="display:none;">
     <div class="header">
       <div style="display:flex; align-items:center; gap:8px;">
@@ -194,6 +205,7 @@
           <button id="tab-grades-btn" class="nav-btn" onclick="switchView('grades')">📝 Baholash</button>
           <button id="tab-monitoring-btn" class="nav-btn" onclick="switchView('monitoring')">📊 Monitoring</button>
           <button id="tab-teacher-feedback-btn" class="nav-btn" style="display:none; background:#d97706;" onclick="switchView('teacher-feedback')">💬 Izohlar</button>
+          <button id="tab-admin-manage-btn" class="nav-btn" style="display:none; background:#059669;" onclick="switchView('admin-manage')">⚙️ Boshqaruv (Excel)</button>
         </div>
       </div>
       <div>
@@ -219,6 +231,20 @@
         </div>
       </div>
 
+      <!-- KUNLARNI FILTRLASH (TELEFON UCHUN MAXSUS) -->
+      <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#f1f5f9;">
+        <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+          <span style="font-weight:bold; color:#0f2e5a;">📱 Kunni tanlash (ekranga sig'dirish):</span>
+          <button class="pill active" id="day-filter-all" onclick="setDayFilter('all')">Barchasi (5 kun)</button>
+          <button class="pill" id="day-filter-0" onclick="setDayFilter(0)">Dush</button>
+          <button class="pill" id="day-filter-1" onclick="setDayFilter(1)">Sesh</button>
+          <button class="pill" id="day-filter-2" onclick="setDayFilter(2)">Chor</button>
+          <button class="pill" id="day-filter-3" onclick="setDayFilter(3)">Pay</button>
+          <button class="pill" id="day-filter-4" onclick="setDayFilter(4)">Jum</button>
+        </div>
+        <div style="font-size:11px; color:#64748b;">(Talaba F.I.Sh. qatorlari qotirilgan)</div>
+      </div>
+
       <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div style="display:flex; align-items:center;">
           <button class="btn btn-primary" onclick="shiftWeek(-1)">◀ Oldingi</button>
@@ -235,7 +261,7 @@
 
       <div id="group-stats-bar" class="stat-bar" style="display:none;"></div>
 
-      <div class="card" style="overflow-x:auto; padding: 4px;">
+      <div class="card" style="overflow-x:auto; padding: 4px; max-height:75vh;">
         <table>
           <thead>
             <tr id="days-row"></tr>
@@ -400,9 +426,48 @@
         </table>
       </div>
     </div>
+
+    <!-- 5-BO'LIM: ADMIN UCHUN EXCEL BOSHQARUVI (DARS JADVALI VA KONTRAKT) -->
+    <div id="view-admin-manage" style="display:none;">
+      <div class="card">
+        <h3 style="margin-top:0; color:#0f2e5a;">📁 Excel orqali bazani yangilash (Admin)</h3>
+        <p style="color:#64748b; font-size:12px;">Bu bo'lim orqali dars jadvali va talabalar kontrakt qarzdorliklarini to'g'ridan-to'g'ri .xlsx fayl orqali yuklaysiz.</p>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
+        <!-- 1. DARS JADVALINI YUKLASH -->
+        <div class="card">
+          <b style="font-size:13px; color:#005953; display:block; margin-bottom:6px;">📅 1. Dars jadvalini yuklash (.xlsx)</b>
+          <p style="font-size:11px; color:#475569; margin-top:0;">
+            Excel fayl ustunlari tartibi: <b>Guruh | Sana (YYYY-MM-DD) | Hafta kuni | Para (1,2,3) | Vaqti | Fan va o'qituvchi | Xona</b>
+          </p>
+          <div class="upload-box" onclick="document.getElementById('excel-schedule-file').click()">
+            <span style="font-size:24px;">📊</span><br>
+            <b style="color:#2563eb;">Dars jadvali Excel faylini tanlang</b>
+            <input type="file" id="excel-schedule-file" accept=".xlsx, .xls" style="display:none;" onchange="handleScheduleUpload(event)">
+          </div>
+          <div id="schedule-upload-status" style="margin-top:8px; font-weight:bold; font-size:11px;"></div>
+        </div>
+
+        <!-- 2. KONTRAKT QARZDORLIGINI YUKLASH -->
+        <div class="card">
+          <b style="font-size:13px; color:#991b1b; display:block; margin-bottom:6px;">💰 2. Kontrakt qarzdorligini yuklash (.xlsx)</b>
+          <p style="font-size:11px; color:#475569; margin-top:0;">
+            Excel fayl ustunlari: <b>HEMIS ID (yoki F.I.Sh.) | Qarzdorlik summasi (so'mda)</b><br>
+            Tizim avtomatik ravishda mos talabalarni topib qarzlarini yangilaydi.
+          </p>
+          <div class="upload-box" onclick="document.getElementById('excel-contract-file').click()">
+            <span style="font-size:24px;">💳</span><br>
+            <b style="color:#dc2626;">Kontrakt qarzdorlik Excel faylini tanlang</b>
+            <input type="file" id="excel-contract-file" accept=".xlsx, .xls" style="display:none;" onchange="handleContractUpload(event)">
+          </div>
+          <div id="contract-upload-status" style="margin-top:8px; font-weight:bold; font-size:11px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- 5. TALABA SHAXSIY KABINETI -->
+  <!-- 6. TALABA SHAXSIY KABINETI -->
   <div id="student-app" style="display:none; max-width:900px; margin: 0 auto; padding: 8px;">
     <div class="header" style="border-radius:8px;">
       <div><b style="font-size: 14px;">Talaba Shaxsiy Kabineti</b></div>
@@ -513,6 +578,7 @@
     let selectedStudyType = "Barchasi";
     let selectedFacultyFilter = "Barchasi";
     let selectedCourseFilter = "Barchasi";
+    let selectedDayIndex = "all"; // Telefon uchun kun filtri: 'all', 0, 1, 2, 3, 4
 
     let curMonday = getMonday(new Date());
     let weekDates = [];
@@ -521,32 +587,15 @@
     let pendingChanges = {};
     let monitoringRows = [];
     let feedbackRows = [];
-
     let transferringStudent = null;
+
+    let dynamicMasterSchedule = [];
 
     function cleanCourseNumber(c) {
       if (!c) return "1";
       var n = String(c).replace(/\D/g, '');
       return n ? n : "1";
     }
-
-    const masterSchedule = [
-      { date: "2026-11-02", day: "02.11 (Dush)", para: 1, time: "8:30–9:50", subject: "Iqtisodiyotda AKT (A) Mamonov A.M.", room: "325" },
-      { date: "2026-11-02", day: "02.11 (Dush)", para: 2, time: "10:00–11:20", subject: "Amaliy matematika 1,2 (A) Ibragimov A.M.", room: "322" },
-      { date: "2026-11-02", day: "02.11 (Dush)", para: 3, time: "11:30–12:50", subject: "Eng yangi tarix (S) Xudoyorov O`.", room: "315" },
-      { date: "2026-11-03", day: "03.11 (Sesh)", para: 1, time: "8:30–9:50", subject: "O`zbek tili rus tili (A) Kurbaniyazova D.", room: "318" },
-      { date: "2026-11-03", day: "03.11 (Sesh)", para: 2, time: "10:00–11:20", subject: "Iqtisodiyot nazariyasi (S) Ulmasova O.", room: "209" },
-      { date: "2026-11-03", day: "03.11 (Sesh)", para: 3, time: "11:30–12:50", subject: "Iqtisodiyot nazariyasi (M) Mardonov B.", room: "115" },
-      { date: "2026-11-04", day: "04.11 (Chor)", para: 1, time: "8:30–9:50", subject: "Amaliy matematika 1,2 (M) Ibragimov A.", room: "401" },
-      { date: "2026-11-04", day: "04.11 (Chor)", para: 2, time: "10:00–11:20", subject: "Xorijiy til 1 (ingliz) (A) Qurbonova N.", room: "329" },
-      { date: "2026-11-04", day: "04.11 (Chor)", para: 3, time: "11:30–12:50", subject: "Iqtisodiyotda AKT (M) Mamonov A.", room: "112" },
-      { date: "2026-11-05", day: "05.11 (Pay)", para: 1, time: "8:30–9:50", subject: "Eng yangi tarix (M) Xudoyorov O`.", room: "112" },
-      { date: "2026-11-05", day: "05.11 (Pay)", para: 2, time: "10:00–11:20", subject: "Amaliy matematika (M) Ibragimov A.", room: "218" },
-      { date: "2026-11-05", day: "05.11 (Pay)", para: 3, time: "11:30–12:50", subject: "Iqtisodiyotda AKT (M) Mamonov A.", room: "112" },
-      { date: "2026-11-06", day: "06.11 (Jum)", para: 1, time: "8:30–9:50", subject: "Xorijiy til 1 (ingliz) (A) Qurbonova N.", room: "202" },
-      { date: "2026-11-06", day: "06.11 (Jum)", para: 2, time: "10:00–11:20", subject: "O`zbek tili rus tili (A) Kurbaniyazova D.", room: "313" },
-      { date: "2026-11-06", day: "06.11 (Jum)", para: 3, time: "11:30–12:50", subject: "Xorijiy til 1 (ingliz) (A) Qurbonova N.", room: "118" }
-    ];
 
     window.onload = function() {
       initWeek();
@@ -593,6 +642,7 @@
         var d = new Date(curMonday);
         d.setDate(curMonday.getDate() + i);
         weekDates.push({ 
+          index: i,
           date: fmt(d), 
           label: String(d.getDate()).padStart(2,'0') + "." + String(d.getMonth()+1).padStart(2,'0') + " (" + names[i] + ")" 
         });
@@ -608,16 +658,36 @@
       if (currentGroup) loadGroupData();
     }
 
+    function setDayFilter(val) {
+      selectedDayIndex = val;
+      for (var i = 0; i < 5; i++) {
+        var btn = document.getElementById("day-filter-" + i);
+        if (btn) btn.className = "pill" + (val === i ? " active" : "");
+      }
+      var allBtn = document.getElementById("day-filter-all");
+      if (allBtn) allBtn.className = "pill" + (val === 'all' ? " active" : "");
+
+      buildHeaders();
+      renderAttendanceTable();
+    }
+
+    function getVisibleDays() {
+      if (selectedDayIndex === 'all') return weekDates;
+      return [weekDates[selectedDayIndex]];
+    }
+
     function buildHeaders() {
       var dRow = document.getElementById("days-row"), pRow = document.getElementById("paras-row");
       if (!dRow || !pRow) return;
 
-      var dHtml = '<th rowspan="2" style="width:30px;">T/r</th>' +
-                  '<th rowspan="2" style="width:95px;">HEMIS ID</th>' +
-                  '<th rowspan="2" style="text-align:left; min-width:180px; padding-left:6px;">Talaba (Kontrakt)</th>';
+      var dHtml = '<th rowspan="2" class="sticky-col-tr" style="width:32px;">T/r</th>' +
+                  '<th rowspan="2" class="sticky-col-id" style="width:90px;">HEMIS ID</th>' +
+                  '<th rowspan="2" class="sticky-col-name" style="text-align:left; min-width:180px; padding-left:6px;">Talaba (Kontrakt)</th>';
       var pHtml = "";
 
-      weekDates.forEach(function(w) {
+      var visibleDays = getVisibleDays();
+
+      visibleDays.forEach(function(w) {
         dHtml += '<th colspan="3">' + w.label + '</th>';
         pHtml += '<th class="sub-th">1</th><th class="sub-th">2</th><th class="sub-th">3</th>';
       });
@@ -652,18 +722,8 @@
       var btn = document.getElementById("l-btn");
 
       err.style.display = "none";
-
-      if (!supabaseClient) {
-        err.innerText = "Xatolik: Supabase yuklanmagan!";
-        err.style.display = "block";
-        return;
-      }
-
-      if (!u || !p) { 
-        err.innerText = "Login va parolni kiriting!"; 
-        err.style.display = "block"; 
-        return; 
-      }
+      if (!supabaseClient) { err.innerText = "Xatolik: Baza yuklanmadi"; err.style.display = "block"; return; }
+      if (!u || !p) { err.innerText = "Login va parolni kiriting!"; err.style.display = "block"; return; }
 
       btn.innerText = "Tekshirilmoqda...";
       btn.disabled = true;
@@ -680,10 +740,7 @@
         btn.disabled = false;
 
         if (error || !data) {
-          if (!isAuto) {
-            err.innerText = "Login yoki parol noto'g'ri!";
-            err.style.display = "block";
-          }
+          if (!isAuto) { err.innerText = "Login yoki parol noto'g'ri!"; err.style.display = "block"; }
           localStorage.removeItem("auth_role");
           return;
         }
@@ -699,6 +756,7 @@
         
         if (data.role === 'admin') {
           document.getElementById("tab-teacher-feedback-btn").style.display = "inline-flex";
+          document.getElementById("tab-admin-manage-btn").style.display = "inline-flex";
         }
         buildHeaders();
         loadAllGroupsPaginated();
@@ -717,46 +775,23 @@
       var btn = document.getElementById("s-btn");
 
       err.style.display = "none";
-
-      if (!supabaseClient) {
-        err.innerText = "Xatolik: Baza yuklanmagan!";
-        err.style.display = "block";
-        return;
-      }
-
-      if (!id) { 
-        err.innerText = "HEMIS ID raqamingizni kiriting!"; 
-        err.style.display = "block"; 
-        return; 
-      }
+      if (!id) { err.innerText = "HEMIS ID raqamingizni kiriting!"; err.style.display = "block"; return; }
 
       btn.innerText = "Tekshirilmoqda...";
       btn.disabled = true;
 
       try {
-        const { data: st, error } = await supabaseClient
-          .from('students')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
+        const { data: st, error } = await supabaseClient.from('students').select('*').eq('id', id).maybeSingle();
 
         if (error || !st) {
           btn.innerText = "Kabinetga kirish";
           btn.disabled = false;
-          if (!isAuto) {
-            err.innerText = "Bunday HEMIS ID topilmadi!";
-            err.style.display = "block";
-          }
+          if (!isAuto) { err.innerText = "Bunday HEMIS ID topilmadi!"; err.style.display = "block"; }
           localStorage.removeItem("auth_role");
           return;
         }
 
-        const { data: contractData } = await supabaseClient
-          .from('contracts')
-          .select('debt_amount')
-          .eq('student_id', id)
-          .maybeSingle();
-
+        const { data: contractData } = await supabaseClient.from('contracts').select('debt_amount').eq('student_id', id).maybeSingle();
         st.debt_amount = (contractData && contractData.debt_amount) ? Number(contractData.debt_amount) : 0;
         currentStudent = st;
 
@@ -765,7 +800,6 @@
 
         btn.innerText = "Kabinetga kirish";
         btn.disabled = false;
-
         document.getElementById("login-modal").style.display = "none";
         document.getElementById("student-app").style.display = "block";
         renderStudentView(st);
@@ -794,11 +828,7 @@
         debtBox.style.display = "none";
       }
 
-      const { data: abs } = await supabaseClient
-        .from('attendance')
-        .select('*')
-        .eq('student_id', st.id)
-        .order('attendance_date', { ascending: false });
+      const { data: abs } = await supabaseClient.from('attendance').select('*').eq('student_id', st.id).order('attendance_date', { ascending: false });
 
       var totalSemesterHours = 0;
       if (abs) {
@@ -819,44 +849,44 @@
         alertBox.innerHTML = '<div class="alert-banner alert-warning">⚠️ OGOHLANTIRISH: Dars qoldirishlaringiz 18 soatdan oshdi.</div>';
       }
 
+      await loadGroupScheduleForStudent(st.group_name);
+    }
+
+    async function loadGroupScheduleForStudent(grp) {
+      const { data: dbSched } = await supabaseClient
+        .from('schedules')
+        .select('*')
+        .eq('group_name', grp)
+        .order('schedule_date');
+
       var sTbody = document.getElementById("st-schedule-tbody");
       sTbody.innerHTML = "";
       var todayStr = fmt(new Date());
 
-      masterSchedule.forEach(function(item) {
+      var list = (dbSched && dbSched.length > 0) ? dbSched : dynamicMasterSchedule;
+
+      if (!list || list.length === 0) {
+        sTbody.innerHTML = "<tr><td colspan='5' style='padding:12px; color:#64748b;'>Dars jadvali hali yuklanmagan</td></tr>";
+        return;
+      }
+
+      list.forEach(function(item) {
         var tr = document.createElement("tr");
-        var isToday = item.date === todayStr;
+        var isToday = (item.schedule_date || item.date) === todayStr;
         var dayBadge = isToday ? '<span class="tag-today">Bugun</span>' : '';
         if (isToday) tr.style.backgroundColor = '#f0fdf4';
 
-        tr.innerHTML = '<td><b>' + item.day + '</b>' + dayBadge + '</td>' +
+        tr.innerHTML = '<td><b>' + (item.day_name || item.day) + '</b>' + dayBadge + '</td>' +
           '<td>' + item.para + '</td>' +
-          '<td>' + item.time + '</td>' +
+          '<td>' + (item.time_slot || item.time) + '</td>' +
           '<td style="text-align:left; font-weight:600; padding-left:8px;">' + item.subject + '</td>' +
           '<td class="schedule-room">' + item.room + '</td>';
         sTbody.appendChild(tr);
       });
-
-      var tbody = document.getElementById("st-absences-tbody");
-      tbody.innerHTML = "";
-      if (!abs || abs.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='6' style='padding:15px; color:#16a34a; font-weight:bold;'>Dars qoldirishlar mavjud emas!</td></tr>";
-      } else {
-        abs.forEach(function(a) {
-          var tr = document.createElement("tr");
-          tr.innerHTML = '<td><b>' + a.attendance_date + '</b></td><td>' + a.para + '</td><td><span class="badge badge-danger">' + a.hours + 's</span></td><td>' + a.status + '</td><td>' + (a.comment || "—") + '</td><td>' + a.marked_by + '</td>';
-          tbody.appendChild(tr);
-        });
-      }
     }
 
     async function loadTeachersSearchList() {
-      const { data: teachers } = await supabaseClient
-        .from('system_users')
-        .select('full_name, role')
-        .eq('role', 'teacher')
-        .order('full_name');
-
+      const { data: teachers } = await supabaseClient.from('system_users').select('full_name').eq('role', 'teacher').order('full_name');
       var datalist = document.getElementById("teachers-datalist");
       datalist.innerHTML = "";
       if (teachers) {
@@ -872,115 +902,27 @@
       var inputElem = document.getElementById("teacher-search-input");
       var selElem = document.getElementById("teacher-rate-select");
       var btn = document.getElementById("teacher-rate-btn");
-
       var teacherName = inputElem.value.trim();
       var selectedVal = selElem.value;
 
-      if (!teacherName) {
-        alert("Ustoz ism-familiyasini kiriting!");
-        inputElem.focus();
-        return;
-      }
-
-      if (!selectedVal) {
-        alert("O'qituvchiga izoh va bahoni tanlang!");
-        selElem.focus();
-        return;
-      }
+      if (!teacherName) { alert("Ustoz ismini kiriting!"); return; }
+      if (!selectedVal) { alert("Bahoni tanlang!"); return; }
 
       var parts = selectedVal.split('|');
-      var score = Number(parts[0]);
-      var comment = parts[1];
-
       btn.disabled = true;
-      btn.innerText = "Yuborilmoqda...";
 
-      const { error } = await supabaseClient
-        .from('teacher_ratings')
-        .insert([{
-          teacher_name: teacherName,
-          score: score,
-          comment: comment,
-          student_id: currentStudent ? currentStudent.id : null,
-          student_fio: currentStudent ? currentStudent.fio : 'Noma\'lum',
-          group_name: currentStudent ? currentStudent.group_name : '—'
-        }]);
+      const { error } = await supabaseClient.from('teacher_ratings').insert([{
+        teacher_name: teacherName,
+        score: Number(parts[0]),
+        comment: parts[1],
+        student_id: currentStudent ? currentStudent.id : null,
+        student_fio: currentStudent ? currentStudent.fio : 'Noma\'lum',
+        group_name: currentStudent ? currentStudent.group_name : '—'
+      }]);
 
       btn.disabled = false;
-      btn.innerText = "🔒 Fikrni yuborish";
-
-      if (error) {
-        alert("Xatolik: " + error.message);
-      } else {
-        alert("Rahmat! Sizning " + teacherName + " haqidagi fikringiz anonim tarzda qabul qilindi.");
-        inputElem.value = "";
-        selElem.value = "";
-      }
-    }
-
-    async function loadTeacherFeedbackData() {
-      var tbody = document.getElementById("feedback-tbody");
-      tbody.innerHTML = "<tr><td colspan='7' style='padding:15px;'>Izohlar yuklanmoqda...</td></tr>";
-
-      const { data, error } = await supabaseClient
-        .from('teacher_ratings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error || !data) {
-        tbody.innerHTML = "<tr><td colspan='7' style='padding:15px; color:red;'>Xatolik: " + (error ? error.message : "") + "</td></tr>";
-        return;
-      }
-
-      feedbackRows = data;
-
-      if (data.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='7' style='padding:15px; color:#64748b;'>Hozircha hech qanday izoh yo'q.</td></tr>";
-        return;
-      }
-
-      tbody.innerHTML = "";
-      data.forEach(function(r, idx) {
-        var tr = document.createElement("tr");
-        var dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString('uz-UZ') : "—";
-        var badgeCls = "badge-score-" + r.score;
-
-        tr.innerHTML = 
-          '<td>' + (idx + 1) + '</td>' +
-          '<td style="color:#64748b; font-size:10px;">' + dateStr + '</td>' +
-          '<td style="text-align:left; font-weight:bold; color:#0f2e5a; padding-left:6px;">' + r.teacher_name + '</td>' +
-          '<td><span class="badge ' + badgeCls + '">' + r.score + ' ball</span></td>' +
-          '<td style="text-align:left; font-weight:500; padding-left:6px;">' + r.comment + '</td>' +
-          '<td style="text-align:left; font-weight:bold; color:#2563eb; padding-left:6px;">' + (r.student_fio || "—") + ' (' + (r.student_id || "") + ')</td>' +
-          '<td><b style="color:#059669;">' + (r.group_name || "—") + '</b></td>';
-        tbody.appendChild(tr);
-      });
-    }
-
-    function exportTeacherFeedbackExcel() {
-      if (feedbackRows.length === 0) {
-        alert("Eksport uchun ma'lumot yo'q!");
-        return;
-      }
-
-      var rows = [["T/r", "Vaqti", "O'qituvchi", "Baho", "Izoh", "Talaba", "HEMIS ID", "Guruh"]];
-      feedbackRows.forEach(function(r, idx) {
-        rows.push([
-          idx + 1,
-          r.created_at ? new Date(r.created_at).toLocaleString('uz-UZ') : "—",
-          r.teacher_name,
-          r.score,
-          r.comment,
-          r.student_fio || "—",
-          r.student_id || "—",
-          r.group_name || "—"
-        ]);
-      });
-
-      var ws = XLSX.utils.aoa_to_sheet(rows);
-      var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Ustozlarga_Izohlar");
-      XLSX.writeFile(wb, "Ustozlarga_Berilgan_Izohlar.xlsx");
+      if (error) { alert("Xato: " + error.message); }
+      else { alert("Anonim baholash qabul qilindi!"); inputElem.value = ""; selElem.value = ""; }
     }
 
     async function loadAllGroupsPaginated() {
@@ -1009,14 +951,7 @@
         var s = (item.study_type || "kunduzgi").toLowerCase().trim();
 
         if (!groupMap[grp]) {
-          groupMap[grp] = { 
-            group_name: grp, 
-            faculty: f, 
-            course: c, 
-            study_type: s,
-            course_form: c + "-kurs " + s,
-            count: 0 
-          };
+          groupMap[grp] = { group_name: grp, faculty: f, course: c, study_type: s, course_form: c + "-kurs " + s, count: 0 };
         }
         groupMap[grp].count++;
       });
@@ -1055,11 +990,7 @@
         var btn = document.createElement("button");
         btn.className = "pill" + (f === currentFaculty ? " active" : "");
         btn.innerText = f;
-        btn.onclick = function() {
-          currentFaculty = f;
-          renderFilters();
-          filterAndRenderGroups();
-        };
+        btn.onclick = function() { currentFaculty = f; renderFilters(); filterAndRenderGroups(); };
         facBox.appendChild(btn);
       });
 
@@ -1071,22 +1002,14 @@
       var allBtn = document.createElement("button");
       allBtn.className = "pill" + (currentCourseForm === "Barchasi" ? " active" : "");
       allBtn.innerText = "Barchasi";
-      allBtn.onclick = function() {
-        currentCourseForm = "Barchasi";
-        renderFilters();
-        filterAndRenderGroups();
-      };
+      allBtn.onclick = function() { currentCourseForm = "Barchasi"; renderFilters(); filterAndRenderGroups(); };
       cBox.appendChild(allBtn);
 
       courseForms.forEach(function(cf) {
         var btn = document.createElement("button");
         btn.className = "pill" + (cf === currentCourseForm ? " active" : "");
         btn.innerText = cf;
-        btn.onclick = function() {
-          currentCourseForm = cf;
-          renderFilters();
-          filterAndRenderGroups();
-        };
+        btn.onclick = function() { currentCourseForm = cf; renderFilters(); filterAndRenderGroups(); };
         cBox.appendChild(btn);
       });
     }
@@ -1156,10 +1079,7 @@
         });
       }
 
-      const { data: allAbs } = await supabaseClient
-        .from('attendance')
-        .select('student_id, hours, status')
-        .eq('group_name', currentGroup);
+      const { data: allAbs } = await supabaseClient.from('attendance').select('student_id, hours, status').eq('group_name', currentGroup);
 
       var totalMap = {};
       if (allAbs) {
@@ -1203,6 +1123,7 @@
       }
 
       var isAdmin = currentUser && currentUser.role === 'admin';
+      var visibleDays = getVisibleDays();
 
       studentsList.forEach(function(st, idx) {
         var tr = document.createElement("tr");
@@ -1211,12 +1132,12 @@
           ? "<span class='debt-badge-danger'>🔴 " + (debtVal / 1000000).toFixed(1) + " mln</span>" 
           : "<span class='debt-badge-ok'>🟢 To'langan</span>";
 
-        var cells = '<td>' + (idx + 1) + '</td><td style="font-family:monospace; font-size:10px;">' + st.id + '</td>' +
-          '<td class="student-cell"><span style="font-weight:600;">' + st.fio + '</span>' + debtBadge + '</td>';
+        var cells = '<td class="sticky-col-tr">' + (idx + 1) + '</td><td class="sticky-col-id" style="font-family:monospace; font-size:10px;">' + st.id + '</td>' +
+          '<td class="student-cell sticky-col-name"><span style="font-weight:600;">' + st.fio + '</span>' + debtBadge + '</td>';
 
         var weekHours = 0;
 
-        weekDates.forEach(function(w) {
+        visibleDays.forEach(function(w) {
           for (var p = 1; p <= 3; p++) {
             var k = st.id + "_" + w.date + "_" + p;
             var isSavedInDb = !!attendanceMap[k];
@@ -1330,12 +1251,7 @@
 
         for (var d = 0; d < deleteKeys.length; d++) {
           var del = deleteKeys[d];
-          await supabaseClient
-            .from('attendance')
-            .delete()
-            .eq('attendance_date', del.attendance_date)
-            .eq('para', del.para)
-            .eq('student_id', del.student_id);
+          await supabaseClient.from('attendance').delete().eq('attendance_date', del.attendance_date).eq('para', del.para).eq('student_id', del.student_id);
         }
 
         btn.innerText = "Bazaga Saqlash";
@@ -1348,9 +1264,6 @@
       }
     }
 
-    // =========================================================================
-    // ADMIN TALABANI GURUHGA KO'CHIRISH (XATOSIZ TUZATILGAN VARIANT)
-    // =========================================================================
     function openTransferModal(stId, fioEncoded, curGroup, curCourse) {
       var fio = decodeURIComponent(fioEncoded);
       transferringStudent = { id: stId, fio: fio, currentGroup: curGroup };
@@ -1360,7 +1273,6 @@
       document.getElementById("transfer-student-curgroup").innerText = curGroup;
       document.getElementById("transfer-target-group").value = "";
       document.getElementById("transfer-target-course").value = cleanCourseNumber(curCourse);
-
       document.getElementById("transfer-modal").style.display = "flex";
     }
 
@@ -1371,7 +1283,6 @@
 
     async function confirmStudentTransfer() {
       if (!transferringStudent) return;
-      
       var stId = transferringStudent.id;
       var stFio = transferringStudent.fio;
       var curGrp = transferringStudent.currentGroup;
@@ -1380,95 +1291,197 @@
       var newCourse = document.getElementById("transfer-target-course").value;
       var btn = document.getElementById("transfer-confirm-btn");
 
-      if (!newGroup) {
-        alert("Iltimos, yangi guruh nomini kiriting yoki tanlang!");
-        return;
-      }
+      if (!newGroup) { alert("Yangi guruh nomini tanlang!"); return; }
+      if (newGroup === curGrp) { alert("Talaba shu guruhda!"); return; }
 
-      if (newGroup === curGrp) {
-        alert("Talaba allaqachon shu guruhda!");
-        return;
-      }
-
-      if (!confirm(stFio + " ni " + curGrp + " guruhidan " + newGroup + " guruhiga ko'chirishni tasdiqlaysizmi?")) {
-        return;
-      }
+      if (!confirm(stFio + " ni " + curGrp + " dan " + newGroup + " guruhiga ko'chirasizmi?")) return;
 
       btn.disabled = true;
       btn.innerText = "Ko'chirilmoqda...";
 
       try {
-        var updatePayload = { 
-          group_name: newGroup,
-          course: cleanCourseNumber(newCourse) + "-kurs"
-        };
-
+        var updatePayload = { group_name: newGroup, course: cleanCourseNumber(newCourse) + "-kurs" };
         var targetMeta = allGroupsMeta.find(function(g) { return g.group_name === newGroup; });
         if (targetMeta && targetMeta.faculty) {
           updatePayload.faculty = targetMeta.faculty;
           updatePayload.study_type = targetMeta.study_type;
         }
 
-        var res1 = await supabaseClient
-          .from('students')
-          .update(updatePayload)
-          .eq('id', stId);
-
+        var res1 = await supabaseClient.from('students').update(updatePayload).eq('id', stId);
         if (res1.error) throw res1.error;
 
-        var res2 = await supabaseClient
-          .from('attendance')
-          .update({ group_name: newGroup })
-          .eq('student_id', stId);
-
+        var res2 = await supabaseClient.from('attendance').update({ group_name: newGroup }).eq('student_id', stId);
         if (res2.error) throw res2.error;
 
         btn.disabled = false;
         btn.innerText = "💾 Ko'chirishni saqlash";
-
         closeTransferModal();
 
-        alert("Muvaffaqiyatli ko'chirildi!\n" + stFio + " endi " + newGroup + " guruhiga o'tkazildi.");
-
+        alert("Muvaffaqiyatli ko'chirildi!\n" + stFio + " endi " + newGroup + " guruhida.");
         await loadAllGroupsPaginated();
         await loadGroupData();
       } catch(err) {
         btn.disabled = false;
         btn.innerText = "💾 Ko'chirishni saqlash";
-        alert("Ko'chirishda xatolik: " + err.message);
+        alert("Xatolik: " + err.message);
       }
     }
 
-    function openScheduleModal() {
-      if (!currentGroup) {
-        alert("Iltimos, avval guruhni tanlang!");
-        return;
-      }
+    async function openScheduleModal() {
+      if (!currentGroup) { alert("Avval guruhni tanlang!"); return; }
       document.getElementById("schedule-modal-title").innerText = currentGroup + " guruhi dars jadvali";
       var tbody = document.getElementById("schedule-tbody");
-      tbody.innerHTML = "";
+      tbody.innerHTML = "<tr><td colspan='5' style='padding:12px;'>Jadval yuklanmoqda...</td></tr>";
+      document.getElementById("schedule-modal").style.display = "flex";
 
+      const { data: dbSched } = await supabaseClient
+        .from('schedules')
+        .select('*')
+        .eq('group_name', currentGroup)
+        .order('schedule_date');
+
+      tbody.innerHTML = "";
+      var list = (dbSched && dbSched.length > 0) ? dbSched : dynamicMasterSchedule;
       var todayStr = fmt(new Date());
 
-      masterSchedule.forEach(function(item) {
+      if (!list || list.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='5' style='padding:15px; color:#64748b;'>Ushbu guruh uchun dars jadvali topilmadi. Admin .xlsx orqali jadval yuklashi mumkin.</td></tr>";
+        return;
+      }
+
+      list.forEach(function(item) {
         var tr = document.createElement("tr");
-        var isToday = item.date === todayStr;
+        var isToday = (item.schedule_date || item.date) === todayStr;
         var dayBadge = isToday ? '<span class="tag-today">Bugun</span>' : '';
         if (isToday) tr.style.backgroundColor = '#f0fdf4';
 
-        tr.innerHTML = '<td><b>' + item.day + '</b>' + dayBadge + '</td>' +
+        tr.innerHTML = '<td><b>' + (item.day_name || item.day) + '</b>' + dayBadge + '</td>' +
           '<td>' + item.para + '</td>' +
-          '<td>' + item.time + '</td>' +
+          '<td>' + (item.time_slot || item.time) + '</td>' +
           '<td style="text-align:left; font-weight:600; padding-left:8px;">' + item.subject + '</td>' +
           '<td class="schedule-room">' + item.room + '</td>';
         tbody.appendChild(tr);
       });
-
-      document.getElementById("schedule-modal").style.display = "flex";
     }
 
     function closeScheduleModal() {
       document.getElementById("schedule-modal").style.display = "none";
+    }
+
+    // =========================================================================
+    // EXCEL ORQALI DARS JADVALINI VA KONTRAKTNI YUKLASH FUNKSIYALARI
+    // =========================================================================
+    async function handleScheduleUpload(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var statusDiv = document.getElementById("schedule-upload-status");
+      statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Fayl o'qilmoqda...</span>";
+
+      var reader = new FileReader();
+      reader.onload = async function(ev) {
+        try {
+          var data = new Uint8Array(ev.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+          if (rows.length < 2) {
+            statusDiv.innerHTML = "<span style='color:red;'>Faylda ma'lumot topilmadi!</span>";
+            return;
+          }
+
+          var scheduleRecords = [];
+          for (var i = 1; i < rows.length; i++) {
+            var r = rows[i];
+            if (!r || r.length === 0 || !r[0]) continue;
+
+            scheduleRecords.push({
+              group_name: String(r[0]).trim().toUpperCase(),
+              schedule_date: r[1] ? String(r[1]).trim() : fmt(new Date()),
+              day_name: r[2] ? String(r[2]).trim() : "Dush",
+              para: Number(r[3] || 1),
+              time_slot: r[4] ? String(r[4]).trim() : "8:30–9:50",
+              subject: r[5] ? String(r[5]).trim() : "Fan",
+              room: r[6] ? String(r[6]).trim() : "101"
+            });
+          }
+
+          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Bazaga yozilmoqda (" + scheduleRecords.length + " ta qator)...</span>";
+
+          const { error } = await supabaseClient.from('schedules').insert(scheduleRecords);
+          if (error) throw error;
+
+          statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Dars jadvali muvaffaqiyatli yuklandi (" + scheduleRecords.length + " ta)!</span>";
+          alert("Dars jadvali bazaga saqlandi!");
+        } catch(err) {
+          statusDiv.innerHTML = "<span style='color:red;'>Xatolik: " + err.message + "</span>";
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function handleContractUpload(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var statusDiv = document.getElementById("contract-upload-status");
+      statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Fayl o'qilmoqda...</span>";
+
+      var reader = new FileReader();
+      reader.onload = async function(ev) {
+        try {
+          var data = new Uint8Array(ev.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+          if (rows.length < 2) {
+            statusDiv.innerHTML = "<span style='color:red;'>Faylda ma'lumot yo'q!</span>";
+            return;
+          }
+
+          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Talabalar solishtirilmoqda...</span>";
+
+          const { data: allStudents } = await supabaseClient.from('students').select('id, fio');
+          var stMapId = {}, stMapFio = {};
+          if (allStudents) {
+            allStudents.forEach(function(s) {
+              stMapId[String(s.id).trim()] = s.id;
+              stMapFio[String(s.fio).trim().toLowerCase()] = s.id;
+            });
+          }
+
+          var contractRecords = [];
+          for (var i = 1; i < rows.length; i++) {
+            var r = rows[i];
+            if (!r || r.length === 0 || !r[0]) continue;
+
+            var key = String(r[0]).trim();
+            var debt = Number(String(r[1] || 0).replace(/[^0-9]/g, ''));
+            var matchedId = stMapId[key] || stMapFio[key.toLowerCase()];
+
+            if (matchedId) {
+              contractRecords.push({ student_id: matchedId, debt_amount: debt });
+            }
+          }
+
+          if (contractRecords.length === 0) {
+            statusDiv.innerHTML = "<span style='color:red;'>Birorta ham talaba HEMIS ID yoki F.I.Sh. bo'yicha mos kelmadi!</span>";
+            return;
+          }
+
+          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Bazaga yangilanmoqda (" + contractRecords.length + " ta)...</span>";
+
+          const { error } = await supabaseClient.from('contracts').upsert(contractRecords, { onConflict: 'student_id' });
+          if (error) throw error;
+
+          statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Kontrakt qarzdorliklari muvaffaqiyatli yangilandi (" + contractRecords.length + " ta)!</span>";
+          alert("Qarzdorliklar yangilandi!");
+          if (currentGroup) loadGroupData();
+        } catch(err) {
+          statusDiv.innerHTML = "<span style='color:red;'>Xatolik: " + err.message + "</span>";
+        }
+      };
+      reader.readAsArrayBuffer(file);
     }
 
     // =========================================================================
@@ -1581,10 +1594,7 @@
         var st = row.students || {};
         var matchShakl = (selectedStudyType === "Barchasi") || ((st.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
         var matchFac = (selectedFacultyFilter === "Barchasi") || (st.faculty === selectedFacultyFilter);
-        
-        var cleanRowCourse = cleanCourseNumber(st.course);
-        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanRowCourse === String(selectedCourseFilter));
-
+        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanCourseNumber(st.course) === String(selectedCourseFilter));
         return matchShakl && matchFac && matchCourse;
       });
 
@@ -1646,15 +1656,8 @@
         absentMap[a.group_name].add(a.student_id);
       });
 
-      var courseStats = {
-        "1": { total: 0, absent: 0 },
-        "2": { total: 0, absent: 0 },
-        "3": { total: 0, absent: 0 },
-        "4": { total: 0, absent: 0 }
-      };
-
-      var grandTotal = 0;
-      var grandAbsent = 0;
+      var courseStats = { "1": { total: 0, absent: 0 }, "2": { total: 0, absent: 0 }, "3": { total: 0, absent: 0 }, "4": { total: 0, absent: 0 } };
+      var grandTotal = 0, grandAbsent = 0;
 
       relevantGroups.forEach(function(g) {
         var c = cleanCourseNumber(g.course);
@@ -1665,7 +1668,6 @@
           courseStats[c].total += grpTotal;
           courseStats[c].absent += grpAbsent;
         }
-
         grandTotal += grpTotal;
         grandAbsent += grpAbsent;
       });
@@ -1683,7 +1685,7 @@
             '<span style="font-size:12px; font-weight:bold; color:' + (pct >= 90 ? '#16a34a' : (pct >= 75 ? '#d97706' : '#dc2626')) + ';">' + pct + '%</span>' +
           '</div>' +
           '<div style="font-size:11px; line-height:1.6;">' +
-            '<div>Jami talaba: <b>' + st.total + ' nafar</b></div>' +
+            '<div>Jami: <b>' + st.total + ' nafar</b></div>' +
             '<div style="color:#16a34a;">Kelgan: <b>' + present + ' nafar</b></div>' +
             '<div style="color:#dc2626;">Kelmagan: <b>' + st.absent + ' nafar</b></div>' +
           '</div>' +
@@ -1704,9 +1706,9 @@
           '<span style="font-size:13px; font-weight:bold; color:#059669;">' + grandPct + '%</span>' +
         '</div>' +
         '<div style="font-size:11px; line-height:1.6;">' +
-          '<div>Jami kontingent: <b>' + grandTotal + ' nafar</b></div>' +
-          '<div style="color:#059669;">Jami kelgan: <b>' + grandPresent + ' nafar</b></div>' +
-          '<div style="color:#dc2626;">Jami kelmagan: <b>' + grandAbsent + ' nafar</b></div>' +
+          '<div>Jami: <b>' + grandTotal + ' nafar</b></div>' +
+          '<div style="color:#059669;">Kelgan: <b>' + grandPresent + ' nafar</b></div>' +
+          '<div style="color:#dc2626;">Kelmagan: <b>' + grandAbsent + ' nafar</b></div>' +
         '</div>' +
         '<div class="progress-bar-bg" style="margin-top:6px;">' +
           '<div class="progress-bar-fill" style="background:#059669; width:' + grandPct + '%;"></div>' +
@@ -1727,10 +1729,7 @@
       var targetGroups = allGroupsMeta.filter(function(g) {
         var matchShakl = (selectedStudyType === "Barchasi") || ((g.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
         var matchFac = (selectedFacultyFilter === "Barchasi") || (g.faculty === selectedFacultyFilter);
-        
-        var cleanGrpCourse = cleanCourseNumber(g.course);
-        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanGrpCourse === String(selectedCourseFilter));
-
+        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanCourseNumber(g.course) === String(selectedCourseFilter));
         return matchShakl && matchFac && matchCourse;
       });
 
@@ -1806,23 +1805,16 @@
           }
         }
 
-        if (!targetChatId) {
-          alert("Telegram guruh topilmadi!");
-          return;
-        }
+        if (!targetChatId) { alert("Telegram guruh topilmadi!"); return; }
 
         var res = await fetch("https://api.telegram.org/bot" + TG_BOT_TOKEN + "/sendMessage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: targetChatId,
-            text: text,
-            parse_mode: "Markdown"
-          })
+          body: JSON.stringify({ chat_id: targetChatId, text: text, parse_mode: "Markdown" })
         });
 
         var resJson = await res.json();
-        if (resJson.ok) alert("Filtrlangan hisobot Telegram guruhga yuborildi!");
+        if (resJson.ok) alert("Hisobot yuborildi!");
         else alert("Xato: " + resJson.description);
       } catch (err) {
         alert("Xatolik: " + err.message);
@@ -1922,11 +1914,13 @@
       document.getElementById("view-grades").style.display = view === 'grades' ? "block" : "none";
       document.getElementById("view-monitoring").style.display = view === 'monitoring' ? "block" : "none";
       document.getElementById("view-teacher-feedback").style.display = view === 'teacher-feedback' ? "block" : "none";
+      document.getElementById("view-admin-manage").style.display = view === 'admin-manage' ? "block" : "none";
 
       document.getElementById("tab-groups-btn").className = "nav-btn" + (view === 'groups' ? " active" : "");
       document.getElementById("tab-grades-btn").className = "nav-btn" + (view === 'grades' ? " active" : "");
       document.getElementById("tab-monitoring-btn").className = "nav-btn" + (view === 'monitoring' ? " active" : "");
       document.getElementById("tab-teacher-feedback-btn").className = "nav-btn" + (view === 'teacher-feedback' ? " active" : "");
+      document.getElementById("tab-admin-manage-btn").className = "nav-btn" + (view === 'admin-manage' ? " active" : "");
 
       if (view === 'grades') renderGradesView();
       if (view === 'monitoring') loadMonitoringData();
