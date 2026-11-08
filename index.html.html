@@ -49,6 +49,7 @@
     tbody tr:nth-child(even) { background-color: #f8fafc; }
     tbody tr:hover { background-color: #f1f5f9; }
     
+    /* TELEFONDA TALABA ISMINI QOTIRISH (STICKY FREEZE) */
     .sticky-col-tr { position: sticky; left: 0; z-index: 5; background: #ffffff; border-left: 1px solid #cbd5e1; }
     .sticky-col-id { position: sticky; left: 32px; z-index: 5; background: #ffffff; }
     .sticky-col-name { position: sticky; left: 122px; z-index: 5; background: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.06); }
@@ -61,9 +62,7 @@
     .cell-btn.late { background: #fef08a; color: #854d0e; border-color: #facc15; }
     .cell-btn.locked { cursor: not-allowed; opacity: 0.85; }
     
-    .student-cell { text-align: left; padding-left: 8px; white-space: nowrap; max-width: 220px; min-width: 170px; overflow: hidden; text-overflow: ellipsis; }
-    .debt-badge-danger { display: inline-block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
-    .debt-badge-ok { display: inline-block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-left: 6px; }
+    .student-cell { text-align: left; padding-left: 8px; white-space: nowrap; max-width: 240px; min-width: 180px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
     
     .table-select { padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; height: 32px; background: white; }
 
@@ -240,7 +239,7 @@
           <button class="pill" id="day-filter-3" onclick="setDayFilter(3)">Pay</button>
           <button class="pill" id="day-filter-4" onclick="setDayFilter(4)">Jum</button>
         </div>
-        <div style="font-size:11px; color:#64748b;">(Talaba F.I.Sh. qatorlari qotirilgan)</div>
+        <div style="font-size:11px; color:#64748b;">(Talaba F.I.Sh. qatori qotirilgan)</div>
       </div>
 
       <div class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -425,18 +424,18 @@
       </div>
     </div>
 
-    <!-- 5-BO'LIM: ADMIN UCHUN EXCEL BOSHQARUVI -->
+    <!-- 5-BO'LIM: ADMIN UCHUN EXCEL BOSHQARUVI (FAQAT DARS JADVALI) -->
     <div id="view-admin-manage" style="display:none;">
       <div class="card">
         <h3 style="margin-top:0; color:#0f2e5a;">📁 Excel orqali bazani yangilash (Admin)</h3>
-        <p style="color:#64748b; font-size:12px;">Dars jadvali va kontrakt qarzdorliklarini to'g'ridan-to'g'ri .xlsx fayl orqali yuklash.</p>
+        <p style="color:#64748b; font-size:12px;">Ko'p varaqli (1-kurs, 2-3-kurs, 1-2-kurs kechki ta'lim) murakkab dars jadvallarini avtomatik ajratib oladi.</p>
       </div>
 
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
         <div class="card">
-          <b style="font-size:13px; color:#005953; display:block; margin-bottom:6px;">📅 1. Dars jadvalini yuklash (.xlsx)</b>
+          <b style="font-size:13px; color:#005953; display:block; margin-bottom:6px;">📅 Dars jadvalini yuklash (.xlsx)</b>
           <p style="font-size:11px; color:#475569; margin-top:0;">
-            Ko'p varaqli (1-kurs, 2-3-kurs...) jadvalingizni yuklang.
+            Ko'p varaqli jadval faylini tanlang. Tizim barcha guruhlar, kunlar, paralar va xonalarni bazaga to'liq saqlaydi.
           </p>
           <div class="upload-box" onclick="document.getElementById('excel-schedule-file').click()">
             <span style="font-size:24px;">📊</span><br>
@@ -444,20 +443,6 @@
             <input type="file" id="excel-schedule-file" accept=".xlsx, .xls" style="display:none;" onchange="handleScheduleUpload(event)">
           </div>
           <div id="schedule-upload-status" style="margin-top:8px; font-weight:bold; font-size:11px;"></div>
-        </div>
-
-        <div class="card">
-          <b style="font-size:13px; color:#991b1b; display:block; margin-bottom:6px;">💰 2. Kontrakt qarzdorligini yuklash (.xlsx)</b>
-          <p style="font-size:11px; color:#475569; margin-top:0;">
-            Ustunlar: <b>FISH | Kontrakt summasi | To'langan summa | Qarz</b><br>
-            <i>Qoidalar:</i> "-" yoki musbat son = qarz yo'q; Manfiy son ("- 16 000 000") = qarz.
-          </p>
-          <div class="upload-box" onclick="document.getElementById('excel-contract-file').click()">
-            <span style="font-size:24px;">💳</span><br>
-            <b style="color:#dc2626;">Kontrakt qarzdorlik Excel faylini tanlang</b>
-            <input type="file" id="excel-contract-file" accept=".xlsx, .xls" style="display:none;" onchange="handleContractUpload(event)">
-          </div>
-          <div id="contract-upload-status" style="margin-top:8px; font-weight:bold; font-size:11px;"></div>
         </div>
       </div>
     </div>
@@ -501,11 +486,6 @@
     </div>
 
     <div id="st-alert-box" style="margin-top:10px;"></div>
-
-    <div id="st-debt-banner" class="card" style="display:none; background:#fef2f2; border:1px solid #f87171; padding:12px 14px;">
-      <b style="color:#991b1b; font-size:13px;">⚠️ Kontrakt bo'yicha qarzdorlik: </b>
-      <span id="st-debt-amount" style="font-weight:bold; color:#dc2626; font-size:14px;">0 so'm</span>
-    </div>
 
     <div class="card">
       <h2 id="st-fio" style="margin:0 0 4px 0; font-size:15px; color:#0f2e5a;">—</h2>
@@ -589,20 +569,6 @@
       if (!c) return "1";
       var n = String(c).replace(/\D/g, '');
       return n ? n : "1";
-    }
-
-    // F.I.Sh. ni harflar xatosiga qaramay toza solishtirish uchun
-    function normalizeFIO(str) {
-      if (!str) return "";
-      return String(str)
-        .toUpperCase()
-        .replace(/['`‘ʼʻ]/g, "")
-        .replace(/H/g, "X") // X va H xatolarini bir xillashtirish
-        .replace(/\bO\b/g, "O")
-        .replace(/\bQIZI\b/g, "QIZI")
-        .replace(/\bOGLI\b/g, "OGLI")
-        .replace(/\s+/g, " ")
-        .trim();
     }
 
     window.onload = function() {
@@ -690,7 +656,7 @@
 
       var dHtml = '<th rowspan="2" class="sticky-col-tr" style="width:32px;">T/r</th>' +
                   '<th rowspan="2" class="sticky-col-id" style="width:90px;">HEMIS ID</th>' +
-                  '<th rowspan="2" class="sticky-col-name" style="text-align:left; min-width:180px; padding-left:6px;">Talaba (Kontrakt)</th>';
+                  '<th rowspan="2" class="sticky-col-name" style="text-align:left; min-width:180px; padding-left:6px;">Talaba F.I.Sh.</th>';
       var pHtml = "";
 
       var visibleDays = getVisibleDays();
@@ -799,8 +765,6 @@
           return;
         }
 
-        const { data: contractData } = await supabaseClient.from('contracts').select('debt_amount').eq('student_id', id).maybeSingle();
-        st.debt_amount = (contractData && contractData.debt_amount) ? Number(contractData.debt_amount) : 0;
         currentStudent = st;
 
         localStorage.setItem("auth_role", "student");
@@ -825,16 +789,6 @@
       document.getElementById("st-group").innerText = st.group_name;
 
       loadTeachersSearchList();
-
-      var debtBox = document.getElementById("st-debt-banner");
-      var debtVal = Number(st.debt_amount || 0);
-
-      if (debtVal > 0) {
-        debtBox.style.display = "block";
-        document.getElementById("st-debt-amount").innerText = debtVal.toLocaleString('uz-UZ') + " so'm";
-      } else {
-        debtBox.style.display = "none";
-      }
 
       const { data: abs } = await supabaseClient.from('attendance').select('*').eq('student_id', st.id).order('attendance_date', { ascending: false });
 
@@ -1064,7 +1018,7 @@
 
       const { data: stList } = await supabaseClient
         .from('students')
-        .select('*, contracts(debt_amount)')
+        .select('*')
         .eq('group_name', currentGroup)
         .order('fio');
 
@@ -1117,18 +1071,9 @@
         return;
       }
 
-      var debtCount = 0;
-      var totalDebt = 0;
-      studentsList.forEach(function(st) {
-        var d = (st.contracts && st.contracts[0] && st.contracts[0].debt_amount) ? Number(st.contracts[0].debt_amount) : 0;
-        if (d > 0) { debtCount++; totalDebt += d; }
-      });
-
       if (statsBar) {
         statsBar.style.display = "flex";
-        statsBar.innerHTML = '<span>👥 Talabalar: <b>' + studentsList.length + ' nafar</b></span> | ' +
-          '<span>🔴 Qarzdor: <b style="color:#b91c1c;">' + debtCount + '</b></span> | ' +
-          '<span>💰 Qarz: <b style="color:#b91c1c;">' + totalDebt.toLocaleString('uz-UZ') + " so'm</b></span>";
+        statsBar.innerHTML = '<span>👥 Guruh talabalari: <b>' + studentsList.length + ' nafar</b></span>';
       }
 
       var isAdmin = currentUser && currentUser.role === 'admin';
@@ -1136,14 +1081,9 @@
 
       studentsList.forEach(function(st, idx) {
         var tr = document.createElement("tr");
-        
-        var debtVal = (st.contracts && st.contracts[0] && st.contracts[0].debt_amount) ? Number(st.contracts[0].debt_amount) : 0;
-        var debtBadge = debtVal > 0 
-          ? "<span class='debt-badge-danger'>🔴 " + (debtVal / 1000000).toFixed(1) + " mln</span>" 
-          : "<span class='debt-badge-ok'>🟢 To'langan</span>";
 
         var cells = '<td class="sticky-col-tr">' + (idx + 1) + '</td><td class="sticky-col-id" style="font-family:monospace; font-size:10px;">' + st.id + '</td>' +
-          '<td class="student-cell sticky-col-name"><span style="font-weight:600;">' + st.fio + '</span>' + debtBadge + '</td>';
+          '<td class="student-cell sticky-col-name"><span>' + st.fio + '</span></td>';
 
         var weekHours = 0;
 
@@ -1500,138 +1440,6 @@
 
           statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Dars jadvali barcha listlar bo'yicha to'liq yuklandi (" + allScheduleRecords.length + " ta mashg'ulot)!</span>";
           alert("Dars jadvali bazaga to'liq muvaffaqiyatli saqlandi!");
-        } catch(err) {
-          statusDiv.innerHTML = "<span style='color:red;'>Xatolik: " + err.message + "</span>";
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    // =========================================================================
-    // KONTRAKT QARZDORLIKLARINI YUKLASH (ANQIQ VA ISHONCHLI ALGORITM)
-    // =========================================================================
-    async function handleContractUpload(e) {
-      var file = e.target.files[0];
-      if (!file) return;
-      var statusDiv = document.getElementById("contract-upload-status");
-      statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Fayl tahlil qilinmoqda...</span>";
-
-      var reader = new FileReader();
-      reader.onload = async function(ev) {
-        try {
-          var data = new Uint8Array(ev.target.result);
-          var workbook = XLSX.read(data, { type: 'array' });
-          var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          var rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-          if (rows.length < 2) {
-            statusDiv.innerHTML = "<span style='color:red;'>Faylda ma'lumot yo'q!</span>";
-            return;
-          }
-
-          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Talabalar bazadan olinmoqda...</span>";
-
-          // Bazadagi barcha talabalarni olamiz
-          var allStudents = [];
-          var from = 0, step = 1000, hasMore = true;
-          while (hasMore) {
-            const { data: stBatch, error: bErr } = await supabaseClient
-              .from('students')
-              .select('id, fio')
-              .range(from, from + step - 1);
-            if (bErr || !stBatch || stBatch.length === 0) { hasMore = false; break; }
-            allStudents = allStudents.concat(stBatch);
-            if (stBatch.length < step) hasMore = false;
-            else from += step;
-          }
-
-          var dbStudentsMap = [];
-          allStudents.forEach(function(s) {
-            var n = normalizeFIO(s.fio);
-            var parts = n.split(' ');
-            var short2 = parts.slice(0, 2).join(' '); // Faqat Familiya + Ism
-            dbStudentsMap.push({
-              id: s.id,
-              rawFio: s.fio,
-              normFio: n,
-              short2: short2
-            });
-          });
-
-          var header = rows[0] || [];
-          var fioCol = 1;
-          var qarzCol = 4;
-
-          for (var c = 0; c < header.length; c++) {
-            var colName = String(header[c] || "").trim().toUpperCase();
-            if (colName.includes("FISH") || colName.includes("F.I.SH") || colName.includes("TALABA")) fioCol = c;
-            if (colName.includes("QARZ")) qarzCol = c;
-          }
-
-          var studentDebtMap = {}; // student_id -> qarz summasi
-
-          for (var i = 1; i < rows.length; i++) {
-            var r = rows[i];
-            if (!r || r.length === 0 || !r[fioCol]) continue;
-
-            var excelFioRaw = String(r[fioCol]).trim();
-            var excelFioNorm = normalizeFIO(excelFioRaw);
-            var excelShort2 = excelFioNorm.split(' ').slice(0, 2).join(' ');
-            var qarzCellRaw = (r[qarzCol] !== undefined && r[qarzCol] !== null) ? String(r[qarzCol]).trim() : "-";
-
-            // Manfiy son bo'lsa haqiqiy qarz
-            var debtAmount = 0;
-            if (qarzCellRaw.includes("-") && /\d/.test(qarzCellRaw)) {
-              debtAmount = Number(qarzCellRaw.replace(/[^0-9]/g, ''));
-            } else {
-              debtAmount = 0;
-            }
-
-            // Solishtirish: 1) To'liq mos kelishi, 2) Ichida bo'lishi, 3) Familiya+Ism mos kelishi
-            var matched = dbStudentsMap.find(function(s) {
-              return s.normFio === excelFioNorm || s.normFio.includes(excelFioNorm) || excelFioNorm.includes(s.normFio);
-            });
-
-            if (!matched && excelShort2.length > 5) {
-              matched = dbStudentsMap.find(function(s) {
-                return s.short2 === excelShort2;
-              });
-            }
-
-            if (matched) {
-              studentDebtMap[matched.id] = debtAmount;
-            }
-          }
-
-          var contractRecords = [];
-          var matchedCount = 0;
-
-          // Faqat qarz aniqlangan yoki faylda chiqqan talabalarga yozamiz
-          for (var sId in studentDebtMap) {
-            contractRecords.push({
-              student_id: sId,
-              debt_amount: studentDebtMap[sId]
-            });
-            matchedCount++;
-          }
-
-          statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Bazaga yozilmoqda (" + matchedCount + " ta mos keldi)...</span>";
-
-          // Eski qarzlarni tozalash
-          await supabaseClient.from('contracts').delete().neq('student_id', '0');
-
-          var insertStep = 500;
-          for (var b = 0; b < contractRecords.length; b += insertStep) {
-            var batch = contractRecords.slice(b, b + insertStep);
-            const { error: insErr } = await supabaseClient.from('contracts').insert(batch);
-            if (insErr) throw insErr;
-          }
-
-          statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Kontrakt qarzdorliklari muvaffaqiyatli saqlandi!<br>" +
-            "🟢 Aniqlangan talabalar: <b>" + matchedCount + " nafar</b></span>";
-          
-          alert("Kontrakt yangilandi!\n" + matchedCount + " nafar talabaning qarzdorlik summasi to'g'ri o'rnatildi.");
-          if (currentGroup) loadGroupData();
         } catch(err) {
           statusDiv.innerHTML = "<span style='color:red;'>Xatolik: " + err.message + "</span>";
         }
