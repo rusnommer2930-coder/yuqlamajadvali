@@ -437,7 +437,7 @@
         <div class="card">
           <b style="font-size:13px; color:#005953; display:block; margin-bottom:6px;">📅 1. Dars jadvalini yuklash (.xlsx)</b>
           <p style="font-size:11px; color:#475569; margin-top:0;">
-            Ko'p varaqli (1-kurs, 2-3-kurs...) rasmdagi jadvalingizni yuklang.
+            Ko'p varaqli (1-kurs, 2-3-kurs...) jadvalingizni yuklang.
           </p>
           <div class="upload-box" onclick="document.getElementById('excel-schedule-file').click()">
             <span style="font-size:24px;">📊</span><br>
@@ -503,7 +503,6 @@
 
     <div id="st-alert-box" style="margin-top:10px;"></div>
 
-    <!-- TALABANING KONTRAKT HOLATI BANNERI -->
     <div id="st-debt-banner" class="card" style="display:none; background:#fef2f2; border:1px solid #f87171; padding:12px 14px;">
       <b style="color:#991b1b; font-size:13px;">⚠️ Kontrakt bo'yicha qarzdorlik: </b>
       <span id="st-debt-amount" style="font-weight:bold; color:#dc2626; font-size:14px;">0 so'm</span>
@@ -596,7 +595,6 @@
       return n ? n : "1";
     }
 
-    // F.I.Sh. larni har xil xatolar va belgilarga qaramay toza taqqoslash funksiyasi
     function normalizeFIO(str) {
       if (!str) return "";
       return String(str)
@@ -1159,7 +1157,6 @@
         var contractRecord = (st.contracts && st.contracts[0]) ? st.contracts[0] : null;
 
         if (!contractRecord || contractRecord.debt_amount === null || contractRecord.debt_amount === undefined) {
-          // Baza bilan solishtirilganda topilmagan yoki noaniq bo'lgan talaba
           debtBadge = "<span class='debt-badge-unknown' title='Iltimos, kontrakt bo'limiga uchrashib holatingizni aniqlang'>🟡 Kontrakt bo'limidan aniqlang</span>";
         } else {
           var debtVal = Number(contractRecord.debt_amount);
@@ -1535,9 +1532,7 @@
       reader.readAsArrayBuffer(file);
     }
 
-    // =========================================================================
-    // KONTRAKT QARZDORLIKLARINI RASMLAR BO'YICHA AQLLI TAHLIL QILISH
-    // =========================================================================
+    // KONTRAKT QARZDORLIKLARINI YUKLASH (XATOSIZ BATCH INSERT)
     async function handleContractUpload(e) {
       var file = e.target.files[0];
       if (!file) return;
@@ -1559,7 +1554,6 @@
 
           statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Talabalar bazadan solishtirilmoqda...</span>";
 
-          // Bazadagi barcha talabalarni olamiz
           const { data: allStudents } = await supabaseClient.from('students').select('id, fio');
           var dbStudentsMap = [];
           if (allStudents) {
@@ -1572,10 +1566,9 @@
             });
           }
 
-          // Ustun indekslarini aniqlaymiz (FISH, Qarz)
           var header = rows[0] || [];
-          var fioCol = 1;  // B ustun
-          var qarzCol = 4; // E ustun
+          var fioCol = 1;
+          var qarzCol = 4;
 
           for (var c = 0; c < header.length; c++) {
             var colName = String(header[c] || "").trim().toUpperCase();
@@ -1587,7 +1580,6 @@
           var matchedCount = 0;
           var unknownCount = 0;
 
-          // Excel qatorlarini tahlil qilamiz
           for (var i = 1; i < rows.length; i++) {
             var r = rows[i];
             if (!r || r.length === 0 || !r[fioCol]) continue;
@@ -1596,20 +1588,13 @@
             var excelFioNorm = normalizeFIO(excelFioRaw);
             var qarzCellRaw = (r[qarzCol] !== undefined && r[qarzCol] !== null) ? String(r[qarzCol]).trim() : "-";
 
-            // QOIDALAR:
-            // 1. Agar "-" bo'lsa yoki bo'sh bo'lsa -> Qarzi 0
-            // 2. Agar musbat son bo'lsa (masalan "4 000 000,0") -> Ortiqcha to'langan, qarzi 0
-            // 3. Agar "-" bilan son kelsa (masalan "- 16 000 000,0" yoki "-16000000") -> Haqiqiy qarz
             var debtAmount = 0;
             if (qarzCellRaw.includes("-") && /\d/.test(qarzCellRaw)) {
-              // Manfiy son: qarz bor
               debtAmount = Number(qarzCellRaw.replace(/[^0-9]/g, ''));
             } else {
-              // Chiziqcha yoki musbat son: qarz yo'q
               debtAmount = 0;
             }
 
-            // Bazadan eng yaqin F.I.Sh. ni topamiz
             var matched = dbStudentsMap.find(function(s) {
               return s.normFio === excelFioNorm || s.normFio.includes(excelFioNorm) || excelFioNorm.includes(s.normFio);
             });
@@ -1623,11 +1608,9 @@
             }
           }
 
-          // Bazada bo'lib, lekin ushbu kontrakt Excelida chiqmagan talabalarni aniqlaymiz
           var uploadedIds = new Set(contractRecords.map(function(c) { return c.student_id; }));
           dbStudentsMap.forEach(function(s) {
             if (!uploadedIds.has(s.id)) {
-              // Chiqmagan talabalarga null (noaniq) belgilanadi
               contractRecords.push({
                 student_id: s.id,
                 debt_amount: null
@@ -1638,12 +1621,14 @@
 
           statusDiv.innerHTML = "<span style='color:#2563eb;'>⏳ Bazaga yangilanmoqda (" + matchedCount + " ta mos keldi)...</span>";
 
-          // Kontrakt bazasiga yozish
+          // Xatolikka tushmaslik uchun: avval eski yozuvlarni tozalab, keyin toza kiritamiz
+          await supabaseClient.from('contracts').delete().neq('student_id', '0');
+
           var step = 500;
           for (var b = 0; b < contractRecords.length; b += step) {
             var batch = contractRecords.slice(b, b + step);
-            const { error: upErr } = await supabaseClient.from('contracts').upsert(batch, { onConflict: 'student_id' });
-            if (upErr) throw upErr;
+            const { error: insErr } = await supabaseClient.from('contracts').insert(batch);
+            if (insErr) throw insErr;
           }
 
           statusDiv.innerHTML = "<span style='color:#16a34a;'>✅ Kontrakt qarzdorliklari muvaffaqiyatli saqlandi!<br>" +
