@@ -983,7 +983,6 @@
       XLSX.writeFile(wb, "Ustozlarga_Berilgan_Izohlar.xlsx");
     }
 
-    // BO'SH QOLGAN (0 TALABA) GURUHLARNI AVTOMATIK FILTRDAN CHIQARIB YUBORISH
     async function loadAllGroupsPaginated() {
       document.getElementById("groups-box").innerHTML = "Guruhlar yuklanmoqda...";
       var allRecords = [];
@@ -1022,14 +1021,13 @@
         groupMap[grp].count++;
       });
 
-      // FAQAT TALABASI BOR (count > 0) GURUHLAR QOLDIRILADI (BO'SH GURUHLAR AVTOMATIK YO'Q BO'LADI)
       allGroupsMeta = Object.values(groupMap)
-        .filter(g => g.count > 0)
-        .sort((a, b) => a.group_name.localeCompare(b.group_name));
+        .filter(function(g) { return g.count > 0; })
+        .sort(function(a, b) { return a.group_name.localeCompare(b.group_name); });
 
       populateTransferGroupsDatalist();
 
-      var defaultFac = allGroupsMeta.find(g => g.faculty.includes("Iqtisodiyot"));
+      var defaultFac = allGroupsMeta.find(function(g) { return g.faculty.includes("Iqtisodiyot"); });
       if (defaultFac && currentFaculty === "Barchasi") currentFaculty = defaultFac.faculty;
 
       renderFilters();
@@ -1049,7 +1047,7 @@
     }
 
     function renderFilters() {
-      var faculties = [...new Set(allGroupsMeta.map(i => i.faculty).filter(Boolean))].sort();
+      var faculties = [...new Set(allGroupsMeta.map(function(i) { return i.faculty; }).filter(Boolean))].sort();
       var facBox = document.getElementById("faculties-filter");
       facBox.innerHTML = "";
 
@@ -1065,8 +1063,8 @@
         facBox.appendChild(btn);
       });
 
-      var currentFacGroups = allGroupsMeta.filter(g => g.faculty === currentFaculty);
-      var courseForms = [...new Set(currentFacGroups.map(i => i.course_form).filter(Boolean))].sort();
+      var currentFacGroups = allGroupsMeta.filter(function(g) { return g.faculty === currentFaculty; });
+      var courseForms = [...new Set(currentFacGroups.map(function(i) { return i.course_form; }).filter(Boolean))].sort();
       var cBox = document.getElementById("courses-filter");
       cBox.innerHTML = "";
 
@@ -1120,7 +1118,7 @@
         box.appendChild(c);
       });
 
-      var isCurrentPresent = filtered.some(g => g.group_name === currentGroup);
+      var isCurrentPresent = filtered.some(function(g) { return g.group_name === currentGroup; });
       if (!isCurrentPresent && filtered.length > 0) {
         currentGroup = filtered[0].group_name;
         filterAndRenderGroups();
@@ -1252,7 +1250,6 @@
                  '</select></td>';
         cells += '<td><button class="btn-sms" onclick="sendStudentSMS(\'' + st.id + '\',\'' + encodeURIComponent(st.fio) + '\')">SMS</button></td>';
 
-        // ADMIN UCHUN GURUHNI KO'CHIRISH TUGMASI
         if (isAdmin) {
           cells += '<td><button class="btn-transfer" onclick="openTransferModal(\'' + st.id + '\',\'' + encodeURIComponent(st.fio) + '\',\'' + (st.group_name || currentGroup) + '\',\'' + (st.course || 1) + '\')">🔄 Ko\'chirish</button></td>';
         }
@@ -1352,7 +1349,7 @@
     }
 
     // =========================================================================
-    // ADMIN TALABANI GURUHGA KO'CHIRISH FUNKSIYALARI
+    // ADMIN TALABANI GURUHGA KO'CHIRISH (XATOSIZ TUZATILGAN VARIANT)
     // =========================================================================
     function openTransferModal(stId, fioEncoded, curGroup, curCourse) {
       var fio = decodeURIComponent(fioEncoded);
@@ -1374,6 +1371,11 @@
 
     async function confirmStudentTransfer() {
       if (!transferringStudent) return;
+      
+      var stId = transferringStudent.id;
+      var stFio = transferringStudent.fio;
+      var curGrp = transferringStudent.currentGroup;
+
       var newGroup = document.getElementById("transfer-target-group").value.trim().toUpperCase();
       var newCourse = document.getElementById("transfer-target-course").value;
       var btn = document.getElementById("transfer-confirm-btn");
@@ -1383,12 +1385,12 @@
         return;
       }
 
-      if (newGroup === transferringStudent.currentGroup) {
+      if (newGroup === curGrp) {
         alert("Talaba allaqachon shu guruhda!");
         return;
       }
 
-      if (!confirm(transferringStudent.fio + " ni " + transferringStudent.currentGroup + " guruhidan " + newGroup + " guruhiga ko'chirishni tasdiqlaysizmi?")) {
+      if (!confirm(stFio + " ni " + curGrp + " guruhidan " + newGroup + " guruhiga ko'chirishni tasdiqlaysizmi?")) {
         return;
       }
 
@@ -1396,38 +1398,38 @@
       btn.innerText = "Ko'chirilmoqda...";
 
       try {
-        // 1. STUDENTS JADVALINI YANGILASH
         var updatePayload = { 
           group_name: newGroup,
-          course: newCourse + "-kurs"
+          course: cleanCourseNumber(newCourse) + "-kurs"
         };
 
-        var targetMeta = allGroupsMeta.find(g => g.group_name === newGroup);
+        var targetMeta = allGroupsMeta.find(function(g) { return g.group_name === newGroup; });
         if (targetMeta && targetMeta.faculty) {
           updatePayload.faculty = targetMeta.faculty;
           updatePayload.study_type = targetMeta.study_type;
         }
 
-        const { error: stError } = await supabaseClient
+        var res1 = await supabaseClient
           .from('students')
           .update(updatePayload)
-          .eq('id', transferringStudent.id);
+          .eq('id', stId);
 
-        if (stError) throw stError;
+        if (res1.error) throw res1.error;
 
-        // 2. TALABANING DAVOMAT YOZUVLARINI HAM YANGI GURUHGA O'TKAZISH
-        await supabaseClient
+        var res2 = await supabaseClient
           .from('attendance')
           .update({ group_name: newGroup })
-          .eq('student_id', transferringStudent.id);
+          .eq('student_id', stId);
+
+        if (res2.error) throw res2.error;
 
         btn.disabled = false;
         btn.innerText = "💾 Ko'chirishni saqlash";
+
         closeTransferModal();
 
-        alert("Muvaffaqiyatli ko'chirildi!\n" + transferringStudent.fio + " endi " + newGroup + " guruhiga o'tkazildi.");
+        alert("Muvaffaqiyatli ko'chirildi!\n" + stFio + " endi " + newGroup + " guruhiga o'tkazildi.");
 
-        // Barcha guruhlar va jadvallarni qaytadan to'liq yangilash (bo'sh qolgan guruhlar avtomat tozalanadi)
         await loadAllGroupsPaginated();
         await loadGroupData();
       } catch(err) {
@@ -1531,7 +1533,7 @@
     }
 
     function renderMonitoringFacultyChips() {
-      var faculties = ["Barchasi", ...new Set(allGroupsMeta.map(i => i.faculty).filter(Boolean))].sort();
+      var faculties = ["Barchasi", ...new Set(allGroupsMeta.map(function(i) { return i.faculty; }).filter(Boolean))].sort();
       var box = document.getElementById("m-faculties-filter");
       if (!box) return;
       box.innerHTML = "";
@@ -1588,8 +1590,8 @@
 
       monitoringRows = filtered;
 
-      var uniqueStudents = new Set(filtered.map(i => i.student_id));
-      var totalHours = filtered.reduce((acc, cur) => acc + Number(cur.hours || 0), 0);
+      var uniqueStudents = new Set(filtered.map(function(i) { return i.student_id; }));
+      var totalHours = filtered.reduce(function(acc, cur) { return acc + Number(cur.hours || 0); }, 0);
 
       document.getElementById("m-total-students").innerText = uniqueStudents.size + " nafar";
       document.getElementById("m-total-hours").innerText = totalHours + " soat";
@@ -1888,7 +1890,7 @@
     function exportFullGroupWeeklyReport() {
       if (studentsList.length === 0) { alert("Talabalar yo'q!"); return; }
       var rows = [["T/r", "HEMIS ID", "F.I.Sh."]];
-      weekDates.forEach(w => rows[0].push(w.label + " (1)", w.label + " (2)", w.label + " (3)"));
+      weekDates.forEach(function(w) { rows[0].push(w.label + " (1)", w.label + " (2)", w.label + " (3)"); });
       rows[0].push("Hafta", "Jami");
 
       studentsList.forEach(function(st, idx) {
