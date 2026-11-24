@@ -102,6 +102,14 @@
 
     .upload-box { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 18px; text-align: center; background: #f8fafc; cursor: pointer; transition: 0.2s; }
     .upload-box:hover { border-color: #2563eb; background: #eff6ff; }
+
+    .para-status-pill { display:inline-block; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; margin-top:2px; }
+    .p-stat-done { background:#dcfce7; color:#15803d; border:1px solid #86efac; }
+    .p-stat-active { background:#fef9c3; color:#854d0e; border:1px solid #fde047; }
+    .p-stat-late { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; animation: pulseAlert 1.5s infinite; }
+    .p-stat-unmarked { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }
+    @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
+    .late-monitor-box { background:#fff1f2; border:1px solid #fecdd3; border-left:5px solid #e11d48; border-radius:8px; padding:12px 14px; margin-bottom:12px; }
   </style>
 </head>
 <body>
@@ -271,6 +279,7 @@
           <button id="btn-open-add-student" class="btn btn-success" style="display:none;" onclick="openAddStudentModal()">➕ Yangi talaba qo'shish</button>
           <button class="btn btn-warning" onclick="openScheduleModal()">📅 Dars jadvali</button>
           <button class="btn btn-excel" onclick="exportFullGroupWeeklyReport()">📥 Excel</button>
+          <button id="confirm-all-present-btn" class="btn btn-success" onclick="confirmAllPresentForPara()" title="Agar guruhda hamma kelgan bo'lsa, parani yo'qlama qilindi deb tasdiqlash">✅ Hamma keldi (0 nb)</button>
           <button id="save-btn" class="btn btn-primary" onclick="saveAttendanceData()" disabled>Bazaga Saqlash</button>
         </div>
       </div>
@@ -369,6 +378,18 @@
             <button class="pill" id="kurs-4" onclick="setCourseFilter('4')">4-kurs</button>
           </div>
         </div>
+      </div>
+
+      <!-- ADMIN UCHUN: 20 DAQIQADAN KECHIKKAN VA YO'QLAMA QILINMAGAN PARALAR NAZORATI -->
+      <div class="card late-monitor-box" id="late-paras-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+          <b style="font-size:13px; color:#be123c;">🚨 Para bo'yicha yo'qlama nazorati (20 daq reglament | 1-, 2-, 3-smena):</b>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span id="late-paras-summary" style="font-size:11px; font-weight:bold; color:#881337;">Hisoblanmoqda...</span>
+            <button class="btn btn-danger" style="padding:4px 10px;" onclick="sendLateParasToTelegram(false)">✈ Kechikkanlarni Telegramga yuborish</button>
+          </div>
+        </div>
+        <div id="late-paras-list" style="display:flex; flex-wrap:wrap; gap:6px; max-height:160px; overflow-y:auto;"></div>
       </div>
 
       <div class="card" style="background:#f8fafc; border:1px solid #cbd5e1;">
@@ -595,6 +616,131 @@
       return String(str).replace(/[\s\-_()]/g, "").toUpperCase();
     }
 
+    function normalizeFacultyName(raw) {
+      if (!raw) return "Boshqa";
+      var s = String(raw).replace(/\s+/g, ' ').trim().toUpperCase();
+      if (s.startsWith("FILOLOGIYA")) return "Filologiya";
+      if (s.startsWith("IQTISODIYOT")) return "Iqtisodiyot va axborot texnologiyalari";
+      if (s.startsWith("JISMONIY")) return "Jismoniy tarbiya";
+      if (s.startsWith("PEDAGOGIKA")) return "Pedagogika";
+      if (s.startsWith("TARIX")) return "Tarix";
+      return String(raw).trim();
+    }
+
+    // 3 TA SMENA BO'YICHA DARS BOSHLANISH VAQTLARI
+    const SMENA_TIMES = {
+      1: { // 1-smena (Kunduzgi 1-kurs)
+        1: { h: 8, m: 30, label: "08:30", report: "08:55" },
+        2: { h: 10, m: 0, label: "10:00", report: "10:25" },
+        3: { h: 11, m: 30, label: "11:30", report: "11:55" }
+      },
+      2: { // 2-smena (Kunduzgi 2-3-kurs va Sirtqi)
+        1: { h: 13, m: 0, label: "13:00", report: "13:25" },
+        2: { h: 14, m: 30, label: "14:30", report: "14:55" },
+        3: { h: 16, m: 0, label: "16:00", report: "16:25" }
+      },
+      3: { // 3-smena (Kechkilar - faqat 2 para)
+        1: { h: 18, m: 0, label: "18:00", report: "18:25" },
+        2: { h: 19, m: 30, label: "19:30", report: "19:55" }
+      }
+    };
+
+    let todaySchedulesMap = {}; // key: CLEAN_GROUP_PARA -> { h, m, label }
+
+    function detectGroupSmena(studyType, course, faculty) {
+      var st = String(studyType || "").toLowerCase();
+      var cNum = Number(cleanCourseNumber(course));
+      var fac = String(faculty || "").toLowerCase();
+
+      // 1. Hamma kechki 1-2-kurslar (va kechkilar) -> 3-smena
+      if (st.includes("kechki")) return 3;
+
+      // 2. Sirtqi ta'lim shakli -> 2-smena
+      if (st.includes("sirtqi")) return 2;
+
+      // 3. 3-kurs iqtisod guruhi (kunduzgi) -> 1-smena
+      if (cNum === 3 && fac.includes("iqtisod")) return 1;
+
+      // 4. 2-3-kurslar -> 2-smena
+      if (cNum >= 2) return 2;
+
+      // 5. Qolgan 1-kurslar -> 1-smena
+      return 1;
+    }
+
+    function getMaxParasForGroup(studyType, course, faculty) {
+      return detectGroupSmena(studyType, course, faculty) === 3 ? 2 : 3;
+    }
+
+    function getParaTimeConfig(groupName, paraNum, studyType, course, faculty) {
+      var smena = detectGroupSmena(studyType, course, faculty);
+      if (smena === 3 && paraNum > 2) return null;
+      var key = cleanGroupName(groupName) + "_" + paraNum;
+      if (todaySchedulesMap[key]) {
+        return todaySchedulesMap[key];
+      }
+      return SMENA_TIMES[smena][paraNum] || null;
+    }
+
+    function getParaStartTimeObj(dateStr, paraNum, studyType, course, groupName, faculty) {
+      var parts = String(dateStr).split('-');
+      if (parts.length !== 3) return null;
+      var cfg = getParaTimeConfig(groupName, paraNum, studyType, course, faculty);
+      if (!cfg) return null;
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), cfg.h, cfg.m, 0);
+    }
+
+    // Har bir para uchun holatni aniqlash: 'done' | 'active' | 'late' | 'upcoming' | 'unmarked' | 'none'
+    function evaluateParaStatus(dateStr, paraNum, studyType, isChecked, course, groupName, faculty) {
+      if (detectGroupSmena(studyType, course, faculty) === 3 && paraNum > 2) {
+        return { code: 'none', text: '— (2 para)', cls: 'p-stat-unmarked' };
+      }
+      if (isChecked) {
+        return { code: 'done', text: '✅ Qilingan', cls: 'p-stat-done' };
+      }
+      var cfg = getParaTimeConfig(groupName, paraNum, studyType, course, faculty);
+      var startObj = getParaStartTimeObj(dateStr, paraNum, studyType, course, groupName, faculty);
+      if (!startObj) {
+        return { code: 'unmarked', text: '❌ Qilinmagan', cls: 'p-stat-unmarked' };
+      }
+      var now = new Date();
+      var todayStr = fmt(now);
+      if (dateStr > todayStr) {
+        return { code: 'upcoming', text: '⏳ ' + cfg.label, cls: 'p-stat-unmarked' };
+      }
+      if (dateStr < todayStr) {
+        return { code: 'late', text: '❌ Yo\'qlama qilinmagan', cls: 'p-stat-late' };
+      }
+      var diffMins = Math.floor((now.getTime() - startObj.getTime()) / 60000);
+      if (diffMins < 0) {
+        return { code: 'upcoming', text: '⏳ ' + cfg.label, cls: 'p-stat-unmarked' };
+      } else if (diffMins <= 20) {
+        var left = 20 - diffMins;
+        return { code: 'active', text: '🟡 ' + left + ' daq qoldi', cls: 'p-stat-active' };
+      } else {
+        return { code: 'late', text: '🔴 Kechikyapti (' + diffMins + ' daq)', cls: 'p-stat-late' };
+      }
+    }
+
+    async function loadTodaySchedulesMap() {
+      var todayStr = fmt(new Date());
+      const { data } = await supabaseClient
+        .from('schedules')
+        .select('group_name, para, time_slot')
+        .eq('schedule_date', todayStr);
+      todaySchedulesMap = {};
+      if (data) {
+        data.forEach(function(item) {
+          var m = String(item.time_slot || "").match(/(\d{1,2})[:.](\d{2})/);
+          if (m) {
+            var h = Number(m[1]), min = Number(m[2]);
+            var lbl = String(h).padStart(2, '0') + ":" + String(min).padStart(2, '0');
+            todaySchedulesMap[cleanGroupName(item.group_name) + "_" + item.para] = { h: h, m: min, label: lbl };
+          }
+        });
+      }
+    }
+
     window.onload = function() {
       initWeek();
       initMonitoringDates();
@@ -685,9 +831,28 @@
 
       var visibleDays = getVisibleDays();
 
+      var grpMeta = allGroupsMeta.find(function(g) { return g.group_name === currentGroup; });
+      var grpStudyType = grpMeta ? grpMeta.study_type : "kunduzgi";
+      var grpCourse = grpMeta ? grpMeta.course : "1";
+      var grpFaculty = grpMeta ? grpMeta.faculty : "";
+
       visibleDays.forEach(function(w) {
         dHtml += '<th colspan="3">' + w.label + '</th>';
-        pHtml += '<th class="sub-th">1</th><th class="sub-th">2</th><th class="sub-th">3</th>';
+        for (var p = 1; p <= 3; p++) {
+          var isChecked = false;
+          if (currentGroup && studentsList.length > 0) {
+            isChecked = studentsList.some(function(st) {
+              return !!attendanceMap[st.id + "_" + w.date + "_" + p];
+            });
+          }
+          var stInfo = currentGroup
+            ? evaluateParaStatus(w.date, p, grpStudyType, isChecked, grpCourse, currentGroup, grpFaculty)
+            : { text: '', cls: '' };
+          var badgeHtml = currentGroup
+            ? '<br><span class="para-status-pill ' + stInfo.cls + '">' + stInfo.text + '</span>'
+            : '';
+          pHtml += '<th class="sub-th" style="min-width:58px;">' + p + '-para' + badgeHtml + '</th>';
+        }
       });
 
       var isAdmin = currentUser && currentUser.role === 'admin';
@@ -820,7 +985,7 @@
       var totalSemesterHours = 0;
       if (abs) {
         abs.forEach(function(a) {
-          if (a.status !== 'Sababli') totalSemesterHours += Number(a.hours || 0);
+          if (a.status !== 'Sababli' && a.status !== 'Keldi') totalSemesterHours += Number(a.hours || 0);
         });
       }
       document.getElementById("st-total-hours").innerText = totalSemesterHours + " soat";
@@ -953,7 +1118,7 @@
       allRecords.forEach(function(item) {
         var grp = (item.group_name || "").trim();
         if (!grp) return;
-        var f = (item.faculty || "Boshqa").trim();
+        var f = normalizeFacultyName(item.faculty);
         var c = cleanCourseNumber(item.course);
         var s = (item.study_type || "kunduzgi").toLowerCase().trim();
 
@@ -972,6 +1137,7 @@
       var defaultFac = allGroupsMeta.find(function(g) { return g.faculty.includes("Iqtisodiyot"); });
       if (defaultFac && currentFaculty === "Barchasi") currentFaculty = defaultFac.faculty;
 
+      await loadTodaySchedulesMap();
       renderFilters();
       filterAndRenderGroups();
       renderMonitoringFacultyChips();
@@ -1101,6 +1267,7 @@
       });
 
       document.getElementById("save-btn").disabled = true;
+      buildHeaders();
       renderAttendanceTable();
     }
 
@@ -1134,21 +1301,29 @@
         visibleDays.forEach(function(w) {
           for (var p = 1; p <= 3; p++) {
             var k = st.id + "_" + w.date + "_" + p;
-            var isSavedInDb = !!attendanceMap[k];
+            var dbRec = attendanceMap[k];
+            var isSavedInDb = !!(dbRec && dbRec.status !== 'Keldi');
             var act = 'present';
 
             if (pendingChanges[k]) act = pendingChanges[k].action;
-            else if (isSavedInDb) act = (attendanceMap[k].status === 'Kechikdi' ? 'late' : 'absent');
+            else if (dbRec) {
+              if (dbRec.status === 'Keldi') act = 'present';
+              else act = (dbRec.status === 'Kechikdi' ? 'late' : 'absent');
+            }
 
             if (act === 'absent') weekHours += 2;
 
             var cls = "cell-btn" + (act === 'absent' ? " absent" : (act === 'late' ? " late" : ""));
             var txt = (act === 'absent' ? "2" : (act === 'late' ? "K" : "+"));
 
-            var isLocked = isSavedInDb && !isAdmin;
-            if (isLocked) cls += " locked";
-
-            cells += '<td><button class="' + cls + '" onclick="toggleCell(\'' + st.id + '\',\'' + w.date + '\',' + p + ',' + isSavedInDb + ')">' + txt + '</button></td>';
+            var isEveningThird = (detectGroupSmena(st.study_type, st.course, st.faculty) === 3 && p === 3);
+            if (isEveningThird) {
+              cells += '<td style="color:#94a3b8; background:#f1f5f9;">—</td>';
+            } else {
+              var isLocked = isSavedInDb && !isAdmin;
+              if (isLocked) cls += " locked";
+              cells += '<td><button class="' + cls + '" onclick="toggleCell(\'' + st.id + '\',\'' + w.date + '\',' + p + ',' + isSavedInDb + ')">' + txt + '</button></td>';
+            }
           }
         });
 
@@ -1186,7 +1361,7 @@
       var curAct = 'present';
 
       if (pendingChanges[k]) curAct = pendingChanges[k].action;
-      else if (attendanceMap[k]) curAct = (attendanceMap[k].status === 'Kechikdi' ? 'late' : 'absent');
+      else if (attendanceMap[k] && attendanceMap[k].status !== 'Keldi') curAct = (attendanceMap[k].status === 'Kechikdi' ? 'late' : 'absent');
 
       if (curAct === 'present') pendingChanges[k] = { student_id: stId, attendance_date: date, para: p, action: 'absent', status: 'Sababsiz', hours: 2, comment: '' };
       else if (curAct === 'absent') pendingChanges[k] = { student_id: stId, attendance_date: date, para: p, action: 'late', status: 'Kechikdi', hours: 0, comment: '' };
@@ -1257,6 +1432,76 @@
         alert("Xatolik: " + e.message);
       }
     }
+
+    async function confirmAllPresentForPara() {
+      if (!currentGroup || studentsList.length === 0) {
+        alert("Avval guruhni tanlang!");
+        return;
+      }
+      var todayStr = fmt(new Date());
+      var grpMeta = allGroupsMeta.find(function(g) { return g.group_name === currentGroup; });
+      var grpStudyType = grpMeta ? grpMeta.study_type : "kunduzgi";
+
+      // Hozirgi faol yoki oxirgi boshlangan parani avtomatik aniqlaymiz
+      var maxP = getMaxParasForGroup(grpStudyType, grpMeta ? grpMeta.course : '1', grpMeta ? grpMeta.faculty : '');
+      var defaultPara = 1;
+      for (var p = 1; p <= maxP; p++) {
+        var st = evaluateParaStatus(todayStr, p, grpStudyType, false, grpMeta ? grpMeta.course : '1', currentGroup, grpMeta ? grpMeta.faculty : '');
+        if (st.code === 'active' || st.code === 'late') defaultPara = p;
+      }
+
+      var promptHint = maxP === 2 ? "(1 yoki 2 raqamini kiriting):" : "(1, 2 yoki 3 raqamini kiriting):";
+      var paraInput = prompt(
+        currentGroup + " guruhi uchun bugungi (" + todayStr + ") qaysi parani 'Hamma keldi (0 nb)' deb tasdiqlaysiz?\n" + promptHint,
+        String(defaultPara)
+      );
+      if (!paraInput) return;
+      var paraNum = Number(paraInput.replace(/\D/g, ''));
+      if (paraNum < 1 || paraNum > maxP) {
+        alert("Ushbu guruh uchun faqat 1 dan " + maxP + " gacha para kiritish mumkin!");
+        return;
+      }
+
+      // Shu parada allaqachon sababsiz/kechikish yozilganmi tekshiramiz
+      var hasAbsences = studentsList.some(function(st) {
+        var rec = attendanceMap[st.id + "_" + todayStr + "_" + paraNum];
+        return rec && rec.status !== 'Keldi';
+      });
+      if (hasAbsences) {
+        alert("Ushbu parada dars qoldirgan talabalar belgilangan! O'zgartirish uchun 'Bazaga Saqlash' tugmasidan foydalaning.");
+        return;
+      }
+
+      var btn = document.getElementById("confirm-all-present-btn");
+      btn.disabled = true;
+      btn.innerText = "Tasdiqlanmoqda...";
+
+      try {
+        var firstStudent = studentsList[0];
+        const { error } = await supabaseClient.from('attendance').upsert([{
+          attendance_date: todayStr,
+          para: paraNum,
+          group_name: currentGroup,
+          student_id: firstStudent.id,
+          hours: 0,
+          status: 'Keldi',
+          comment: 'Guruh to\'liq keldi (0 nb)',
+          marked_by: currentUser ? currentUser.full_name : 'Dekan'
+        }], { onConflict: 'attendance_date,para,student_id' });
+
+        btn.disabled = false;
+        btn.innerText = "✅ Hamma keldi (0 nb)";
+
+        if (error) throw error;
+        alert(currentGroup + " guruhi " + paraNum + "-para uchun yo'qlama tasdiqlandi (Hamma kelgan)!");
+        loadGroupData();
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerText = "✅ Hamma keldi (0 nb)";
+        alert("Xatolik: " + err.message);
+      }
+    }
+
 
     function openTransferModal(stId, fioEncoded, curGroup, curCourse) {
       var fio = decodeURIComponent(fioEncoded);
@@ -1687,10 +1932,17 @@
         return;
       }
 
-      var filtered = data.filter(function(row) {
+      // Avval barcha yozuvlar (jumladan 'Keldi' tasdiqlari) asosida para holatlarini chizamiz
+      renderLateParasPanel(data, dStart);
+
+      // Endi faqat haqiqiy dars qoldirgan/kechikkanlarni filtrlaymiz ('Keldi' tasdiq qatorlarini chiqarib tashlaymiz)
+      var absencesOnly = data.filter(function(row) { return row.status !== 'Keldi'; });
+
+      var filtered = absencesOnly.filter(function(row) {
         var st = row.students || {};
+        var normFac = normalizeFacultyName(st.faculty);
         var matchShakl = (selectedStudyType === "Barchasi") || ((st.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
-        var matchFac = (selectedFacultyFilter === "Barchasi") || (st.faculty === selectedFacultyFilter);
+        var matchFac = (selectedFacultyFilter === "Barchasi") || (normFac === selectedFacultyFilter);
         var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanCourseNumber(st.course) === String(selectedCourseFilter));
         return matchShakl && matchFac && matchCourse;
       });
@@ -1703,7 +1955,7 @@
       document.getElementById("m-total-students").innerText = uniqueStudents.size + " nafar";
       document.getElementById("m-total-hours").innerText = totalHours + " soat";
 
-      renderCourseOverallSummaryCards(data);
+      renderCourseOverallSummaryCards(absencesOnly);
       renderGroupSummaryCards(filtered);
 
       if (filtered.length === 0) {
@@ -1733,6 +1985,85 @@
           '<td>' + (row.comment || "—") + '</td>' +
           '<td style="color:#0f766e; font-weight:600;">' + row.marked_by + '</td>';
         tbody.appendChild(tr);
+      });
+    }
+
+
+    function renderLateParasPanel(allRawRecords, targetDate) {
+      var listDiv = document.getElementById("late-paras-list");
+      var sumSpan = document.getElementById("late-paras-summary");
+      if (!listDiv || !sumSpan) return;
+
+      // Qaysi guruh + para bazada qayd etilganini yig'amiz
+      var checkedSet = new Set();
+      allRawRecords.forEach(function(r) {
+        if (r.attendance_date === targetDate && r.group_name && r.para) {
+          checkedSet.add(r.group_name + "_" + r.para);
+        }
+      });
+
+      var targetGroups = allGroupsMeta.filter(function(g) {
+        var matchShakl = (selectedStudyType === "Barchasi") || ((g.study_type || "").toLowerCase().includes(selectedStudyType.toLowerCase()));
+        var matchFac = (selectedFacultyFilter === "Barchasi") || (g.faculty === selectedFacultyFilter);
+        var matchCourse = (selectedCourseFilter === "Barchasi") || (cleanCourseNumber(g.course) === String(selectedCourseFilter));
+        return matchShakl && matchFac && matchCourse;
+      });
+
+      var lateItems = [];
+      var activeItems = [];
+      var doneCount = 0;
+
+      targetGroups.forEach(function(g) {
+        var maxP = getMaxParasForGroup(g.study_type, g.course, g.faculty);
+        for (var p = 1; p <= maxP; p++) {
+          var isDone = checkedSet.has(g.group_name + "_" + p);
+          if (isDone) {
+            doneCount++;
+          } else {
+            var smenaNo = detectGroupSmena(g.study_type, g.course, g.faculty);
+            var st = evaluateParaStatus(targetDate, p, g.study_type, false, g.course, g.group_name, g.faculty);
+            if (st.code === 'late') {
+              lateItems.push({ group: g.group_name, para: p, smena: smenaNo, label: st.text, faculty: g.faculty });
+            } else if (st.code === 'active') {
+              activeItems.push({ group: g.group_name, para: p, smena: smenaNo, label: st.text });
+            }
+          }
+        }
+      });
+
+      sumSpan.innerHTML =
+        '<span style="color:#15803d;">✅ Qilingan: ' + doneCount + '</span> | ' +
+        '<span style="color:#b45309;">🟡 Jarayonda (20 daq ichida): ' + activeItems.length + '</span> | ' +
+        '<span style="color:#dc2626;">🔴 Kechikkan / Qilinmagan: ' + lateItems.length + '</span>';
+
+      listDiv.innerHTML = "";
+      if (lateItems.length === 0 && activeItems.length === 0) {
+        listDiv.innerHTML = "<span style='color:#15803d; font-weight:bold; font-size:11px;'>🎉 Barcha boshlangan paralar bo'yicha yo'qlama o'z vaqtida qilingan!</span>";
+        return;
+      }
+
+      lateItems.forEach(function(item) {
+        var badge = document.createElement("span");
+        badge.style.cssText = "background:#fee2e2; color:#991b1b; border:1px solid #f87171; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer;";
+        badge.innerHTML = "🔴 " + item.group + " (" + item.para + "-para) — " + item.label;
+        badge.title = "Yo'qlama sahifasida ochish";
+        badge.onclick = function() {
+          currentFaculty = item.faculty;
+          currentCourseForm = "Barchasi";
+          currentGroup = item.group;
+          switchView('groups');
+          renderFilters();
+          filterAndRenderGroups();
+          loadGroupData();
+        };
+        listDiv.appendChild(badge);
+      });
+
+      activeItems.forEach(function(item) {
+        var badge = document.createElement("span");
+        badge.style.cssText = "background:#fef9c3; color:#854d0e; border:1px solid #facc15; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:600;";
+        badge.innerHTML = "🟡 " + item.group + " (" + item.para + "-para) — " + item.label;
+        listDiv.appendChild(badge);
       });
     }
 
@@ -2075,6 +2406,153 @@
         });
       }
     }
+
+
+    setInterval(function() {
+      if (currentGroup && document.getElementById("view-groups").style.display !== "none") {
+        buildHeaders();
+      }
+      if (document.getElementById("view-monitoring").style.display !== "none") {
+        loadMonitoringData();
+      }
+    }, 60000);
+
+
+    async function getTelegramChatId() {
+      var savedChatId = localStorage.getItem("tg_dekanat_chat_id");
+      if (savedChatId) return savedChatId;
+      var upRes = await fetch("https://api.telegram.org/bot" + TG_BOT_TOKEN + "/getUpdates");
+      var upJson = await upRes.json();
+      if (upJson.ok && upJson.result && upJson.result.length > 0) {
+        for (var idx = upJson.result.length - 1; idx >= 0; idx--) {
+          var item = upJson.result[idx];
+          var cid = null;
+          if (item.message && item.message.chat) cid = item.message.chat.id;
+          else if (item.my_chat_member && item.my_chat_member.chat) cid = item.my_chat_member.chat.id;
+          if (cid) {
+            localStorage.setItem("tg_dekanat_chat_id", String(cid));
+            return cid;
+          }
+        }
+      }
+      return null;
+    }
+
+    async function sendLateParasToTelegram(isAuto, specificSmena, specificPara) {
+      try {
+        if (!allGroupsMeta || allGroupsMeta.length === 0) return;
+        var todayStr = fmt(new Date());
+        const { data: todayAtt } = await supabaseClient
+          .from('attendance')
+          .select('group_name, para')
+          .eq('attendance_date', todayStr);
+
+        var checkedSet = new Set();
+        if (todayAtt) {
+          todayAtt.forEach(function(r) {
+            if (r.group_name && r.para) checkedSet.add(r.group_name + "_" + r.para);
+          });
+        }
+
+        var lateByFaculty = {};
+        var totalLate = 0;
+
+        allGroupsMeta.forEach(function(g) {
+          var smenaNo = detectGroupSmena(g.study_type, g.course, g.faculty);
+          if (specificSmena && smenaNo !== specificSmena) return;
+          var maxP = getMaxParasForGroup(g.study_type, g.course, g.faculty);
+
+          for (var p = 1; p <= maxP; p++) {
+            if (specificPara && p !== specificPara) continue;
+            if (!checkedSet.has(g.group_name + "_" + p)) {
+              var st = evaluateParaStatus(todayStr, p, g.study_type, false, g.course, g.group_name, g.faculty);
+              if (st.code === 'late') {
+                if (!lateByFaculty[g.faculty]) lateByFaculty[g.faculty] = [];
+                lateByFaculty[g.faculty].push(g.group_name + " (" + smenaNo + "-sm, " + p + "-para)");
+                totalLate++;
+              }
+            }
+          }
+        });
+
+        var now = new Date();
+        var timeNow = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0');
+        var headerTitle = specificSmena
+          ? "🚨 *" + specificSmena + "-SMENA | " + specificPara + "-PARA: YO'QLAMA QILINMAGAN GURUHLAR*"
+          : "🚨 *YO'QLAMA QILINMAGAN (KECHIKKAN) GURUHLAR RO'YXATI*";
+
+        var text = headerTitle + "\n";
+        text += "🗓 Sana: `" + todayStr + "` | ⏰ Vaqt: *" + timeNow + "*\n";
+        text += "⚠️ Dars boshlanganidan 25 daqiqa o'tdi, quyidagi guruhlarda yo'qlama kiritilmagan:\n";
+        text += "──────────────────────────\n\n";
+
+        if (totalLate === 0) {
+          if (isAuto) return; // Avtomatik rejimda hammasi qilingan bo'lsa bezovta qilmaydi
+          alert("Hozirgi vaqtga kelib barcha boshlangan paralar bo'yicha yo'qlama qilingan!");
+          return;
+        }
+
+        Object.keys(lateByFaculty).sort().forEach(function(fac) {
+          text += "🏛 *" + fac + "* (" + lateByFaculty[fac].length + " ta):\n";
+          text += "▫️ " + lateByFaculty[fac].join(", ") + "\n\n";
+        });
+
+        text += "📊 *Jami yo'qlama qilinmagan paralar:* " + totalLate + " ta";
+
+        var targetChatId = await getTelegramChatId();
+        if (!targetChatId) {
+          if (!isAuto) alert("Telegram guruh topilmadi! Avval botga guruhda biror xabar yozing.");
+          return;
+        }
+
+        var res = await fetch("https://api.telegram.org/bot" + TG_BOT_TOKEN + "/sendMessage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: targetChatId, text: text, parse_mode: "Markdown" })
+        });
+        var resJson = await res.json();
+        if (!isAuto) {
+          if (resJson.ok) alert("Kechikkan paralar hisoboti Telegramga yuborildi (" + totalLate + " ta)!");
+          else alert("Telegram xatosi: " + resJson.description);
+        }
+      } catch (err) {
+        if (!isAuto) alert("Xatolik: " + err.message);
+      }
+    }
+
+    // Har 30 soniyada 25-daqiqalik reglament vaqtlarini tekshiruvchi avtomatik taymer
+    const AUTO_REPORT_SLOTS = [
+      { smena: 1, para: 1, h: 8,  m: 55 },
+      { smena: 1, para: 2, h: 10, m: 25 },
+      { smena: 1, para: 3, h: 11, m: 55 },
+      { smena: 2, para: 1, h: 13, m: 25 },
+      { smena: 2, para: 2, h: 14, m: 55 },
+      { smena: 2, para: 3, h: 16, m: 25 },
+      { smena: 3, para: 1, h: 18, m: 25 },
+      { smena: 3, para: 2, h: 19, m: 55 }
+    ];
+
+    setInterval(function() {
+      var now = new Date();
+      var dayOfWeek = now.getDay(); // 0 = Yakshanba
+      if (dayOfWeek === 0) return;
+
+      var todayStr = fmt(now);
+      var curH = now.getHours();
+      var curM = now.getMinutes();
+
+      if (currentUser && currentUser.role === 'admin') {
+        AUTO_REPORT_SLOTS.forEach(function(slot) {
+          if (curH === slot.h && curM === slot.m) {
+            var lockKey = "tg_auto_sent_" + todayStr + "_s" + slot.smena + "_p" + slot.para;
+            if (!localStorage.getItem(lockKey)) {
+              localStorage.setItem(lockKey, "1");
+              sendLateParasToTelegram(true, slot.smena, slot.para);
+            }
+          }
+        });
+      }
+    }, 30000);
 
     function logout() {
       localStorage.clear();
